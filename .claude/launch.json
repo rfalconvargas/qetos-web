@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "qetos-www",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "www", "-p", "4179", "-c-1"],
+      "port": 4179
+    }
+  ]
+}

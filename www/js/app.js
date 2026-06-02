@@ -40,6 +40,8 @@ const ONBOARDING_SEED = {
     { name: "Cortisol Manager", dose: "1 tablet", timing: "1× daily" },
   ],
 };
+// First name for the Concierge greeting — overridden by the real profile once logged in.
+state.firstName = (ONBOARDING_SEED.full_name || "there").trim().split(/\s+/)[0];
 
 async function signIn(provider){
   const map = { Google: "google", Apple: "apple" };
@@ -72,10 +74,29 @@ async function syncUser(){
   if (!DB.ready() || !DB.currentUser()) return;
   try {
     const p = await DB.getProfile();
+    if (p && p.full_name) state.firstName = p.full_name.trim().split(/\s+/)[0];
     if (p && !p.onboarded) { await DB.completeOnboarding(ONBOARDING_SEED); toast("Profile synced"); }
+    // Persist a consent acceptance that happened before sign-in.
+    const consentTs = await Store.get("qetos-consent");
+    if (consentTs && p && !p.consent_accepted_at) { try { await DB.upsertProfile({ consent_accepted_at: consentTs }); } catch (e) { console.warn("consent sync:", e); } }
     const t = await DB.getTargets();
     if (t && t.calories) { /* future: reflect real targets in UI */ }
   } catch (e) { console.warn("syncUser:", e); }
+}
+
+/* ===================== CONSENT / MEDICAL DISCLAIMER GATE ===================== */
+// One-time gate. Persisted locally (qetos-consent) and, once signed in, mirrored
+// to profiles.consent_accepted_at. Never re-shown after acceptance.
+async function checkConsent(){
+  const accepted = await Store.get("qetos-consent");
+  if(!accepted){ const c = $("consent"); if(c){ c.style.display = "flex"; c.style.opacity = "1"; } }
+}
+async function acceptConsent(){
+  const ts = new Date().toISOString();
+  await Store.set("qetos-consent", ts);
+  const c = $("consent"); if(c){ c.style.opacity = "0"; setTimeout(() => { c.style.display = "none"; }, 350); }
+  if(DB.ready() && DB.currentUser()){ try{ await DB.upsertProfile({ consent_accepted_at: ts }); }catch(e){ console.warn("consent upsert:", e); } }
+  haptic();
 }
 
 /* ===================== NAV / VIEW SWAP ===================== */
@@ -137,7 +158,7 @@ function handleSend(){
   sayFrom(Concierge.ask(text, ctx()));
 }
 function followUp(answer){ appendChat(userBubble(answer)); sayFrom(Concierge.followUp(answer, ctx()), 700); }
-function ctx(){ return { energy: state.energy, cravingWins: state.cravingWins, habitWins: state.habitWins, connections: state.connections }; }
+function ctx(){ return { name: state.firstName, energy: state.energy, cravingWins: state.cravingWins, habitWins: state.habitWins, connections: state.connections }; }
 
 function quickAction(type){
   if(type === "next"){
@@ -695,6 +716,7 @@ async function enableDailyRhythm(on){
 
 async function init(){
   DB.init();
+  await checkConsent();
   await loadState();
   renderJourney(); renderSettings(); renderFood();
   const total = state.cravingWins + state.habitWins; for(let i=0;i<total;i++) addOrb();

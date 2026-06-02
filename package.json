@@ -4,6 +4,7 @@
   "private": true,
   "description": "Qetos — AI-first metabolic & mental health companion (Capacitor: Android + iOS + Desktop)",
   "scripts": {
+    "build:css": "tailwindcss -i ./tailwind.input.css -o ./www/assets/tailwind.css --minify",
     "sync": "cap sync",
     "android": "cap run android",
     "open:android": "cap open android",
@@ -24,6 +25,8 @@
     "@capacitor/status-bar": "^6.0.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.1.2"
+    "@capacitor/cli": "^6.1.2",
+    "@tailwindcss/forms": "^0.5.11",
+    "tailwindcss": "^3.4.19"
   }
 }

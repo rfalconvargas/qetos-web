@@ -6,51 +6,9 @@
 <meta name="theme-color" content="#FBF9F6"/>
 <title>Qetos</title>
 
-<!-- Tailwind (matches Stitch export) -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-
-<!-- Design tokens lifted verbatim from Stitch DESIGN.md / metabolic_editorial -->
-<script id="tailwind-config">
-  tailwind.config = {
-    darkMode: "class",
-    theme: { extend: {
-      colors: {
-        "primary": "#071834", "primary-container": "#1e2d4a", "on-primary": "#ffffff",
-        "on-primary-container": "#8695b7", "inverse-primary": "#b7c6eb", "primary-fixed": "#d8e2ff",
-        "primary-fixed-dim": "#b7c6eb", "on-primary-fixed": "#0a1b37", "on-primary-fixed-variant": "#384765",
-        "secondary": "#58605d", "on-secondary": "#ffffff", "secondary-container": "#d9e1de",
-        "on-secondary-container": "#5c6461", "secondary-fixed": "#dce4e0", "secondary-fixed-dim": "#c0c8c5",
-        "tertiary": "#221600", "tertiary-container": "#3c2a01", "on-tertiary-container": "#ac915d",
-        "tertiary-fixed": "#ffdea4", "tertiary-fixed-dim": "#e1c28a",
-        "error": "#ba1a1a", "on-error": "#ffffff", "error-container": "#ffdad6", "on-error-container": "#93000a",
-        "background": "#fbf8fb", "background-base": "#FBF9F6", "on-background": "#1b1b1e",
-        "surface": "#fbf8fb", "surface-bright": "#fbf8fb", "surface-dim": "#dbd9dc",
-        "surface-container-lowest": "#ffffff", "surface-container-low": "#f5f3f6", "surface-container": "#efedf0",
-        "surface-container-high": "#eae7ea", "surface-container-highest": "#e4e2e5", "surface-variant": "#e4e2e5",
-        "on-surface": "#1b1b1e", "on-surface-variant": "#44474d", "inverse-surface": "#303033", "inverse-on-surface": "#f2f0f3",
-        "outline": "#75777e", "outline-variant": "#c5c6ce", "surface-tint": "#505e7e",
-        "soft-mint": "#E8F0EC", "text-muted": "#5A6E85",
-        "accent-teal": "#CBE7E3", "accent-lavender": "#E3E0F2", "accent-orange": "#F5A97E", "star-glow": "#F7D070"
-      },
-      borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
-      spacing: { "micro": "4px", "space-2": "8px", "space-3": "12px", "space-4": "16px", "space-6": "24px", "space-8": "32px" },
-      fontFamily: {
-        "display-xl": ["Playfair Display"], "display-lg": ["Playfair Display"],
-        "headline-md": ["Inter"], "body-base": ["Inter"], "body-sm": ["Inter"], "caption": ["Inter"]
-      },
-      fontSize: {
-        "display-xl": ["40px", {"lineHeight":"1.1","fontWeight":"700"}],
-        "display-lg": ["28px", {"lineHeight":"1.2","fontWeight":"500"}],
-        "headline-md": ["20px", {"lineHeight":"1.4","fontWeight":"600"}],
-        "body-base": ["16px", {"lineHeight":"1.6","fontWeight":"400"}],
-        "body-sm": ["14px", {"lineHeight":"1.5","fontWeight":"300"}],
-        "caption": ["12px", {"lineHeight":"1.4","fontWeight":"500"}]
-      }
-    }}
-  }
-</script>
+<!-- Self-hosted, offline-first assets (no runtime CDN). Rebuild Tailwind: npm run build:css -->
+<link rel="stylesheet" href="assets/tailwind.css"/>
+<link rel="stylesheet" href="assets/fonts.css"/>
 
 <style>
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; display:inline-block; line-height:1; vertical-align:middle; }
@@ -348,6 +306,19 @@
     <button onclick="endBreathing()" class="font-body-sm px-space-6 py-space-3 rounded-full bg-surface-container-lowest text-primary active:scale-95 transition">End gently</button>
   </div>
 
+  <!-- ============ CONSENT / MEDICAL DISCLAIMER GATE ============ -->
+  <div id="consent" class="absolute inset-0 z-[80] flex items-center justify-center p-space-6 bg-background-base" style="display:none; transition:opacity .35s ease;">
+    <div class="w-full max-w-md flex flex-col items-center text-center reveal">
+      <div class="mb-space-6 w-16 h-16 rounded-full bg-soft-mint grid place-items-center">
+        <span class="material-symbols-outlined text-primary text-[32px] fill1">health_and_safety</span>
+      </div>
+      <h2 class="font-display-lg text-display-lg text-primary mb-space-4">Before we begin</h2>
+      <p class="font-body-base text-text-muted leading-relaxed mb-space-8">Qetos provides general wellness and educational information — not medical advice, diagnosis, or treatment. It is not a substitute for your physician or prescriber. Never change medications based on the app. If you're in crisis, call or text 988 (US). By continuing you agree this is informational only.</p>
+      <button onclick="acceptConsent()" class="action-pill w-full bg-primary text-on-primary rounded-full py-space-4 px-space-6 font-body-base font-semibold mb-space-4">I understand &amp; agree</button>
+      <p class="font-caption text-text-muted">Read our <a class="underline" href="#">Terms</a> and <a class="underline" href="#">Privacy Policy</a>.</p>
+    </div>
+  </div>
+
   <!-- ============ TOAST ============ -->
   <div id="toast" class="pointer-events-none absolute left-1/2 -translate-x-1/2 z-[70] opacity-0" style="bottom:120px; transform:translate(-50%,8px)">
     <div class="flex items-center gap-space-2 bg-primary text-white font-body-sm px-space-4 py-space-3 rounded-full editorial-shadow">
@@ -357,7 +328,7 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/app.js"></script>
