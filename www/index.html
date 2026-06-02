@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#FBF9F6"/>
+<title>Qetos</title>
+
+<!-- Tailwind (matches Stitch export) -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+<!-- Design tokens lifted verbatim from Stitch DESIGN.md / metabolic_editorial -->
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: { extend: {
+      colors: {
+        "primary": "#071834", "primary-container": "#1e2d4a", "on-primary": "#ffffff",
+        "on-primary-container": "#8695b7", "inverse-primary": "#b7c6eb", "primary-fixed": "#d8e2ff",
+        "primary-fixed-dim": "#b7c6eb", "on-primary-fixed": "#0a1b37", "on-primary-fixed-variant": "#384765",
+        "secondary": "#58605d", "on-secondary": "#ffffff", "secondary-container": "#d9e1de",
+        "on-secondary-container": "#5c6461", "secondary-fixed": "#dce4e0", "secondary-fixed-dim": "#c0c8c5",
+        "tertiary": "#221600", "tertiary-container": "#3c2a01", "on-tertiary-container": "#ac915d",
+        "tertiary-fixed": "#ffdea4", "tertiary-fixed-dim": "#e1c28a",
+        "error": "#ba1a1a", "on-error": "#ffffff", "error-container": "#ffdad6", "on-error-container": "#93000a",
+        "background": "#fbf8fb", "background-base": "#FBF9F6", "on-background": "#1b1b1e",
+        "surface": "#fbf8fb", "surface-bright": "#fbf8fb", "surface-dim": "#dbd9dc",
+        "surface-container-lowest": "#ffffff", "surface-container-low": "#f5f3f6", "surface-container": "#efedf0",
+        "surface-container-high": "#eae7ea", "surface-container-highest": "#e4e2e5", "surface-variant": "#e4e2e5",
+        "on-surface": "#1b1b1e", "on-surface-variant": "#44474d", "inverse-surface": "#303033", "inverse-on-surface": "#f2f0f3",
+        "outline": "#75777e", "outline-variant": "#c5c6ce", "surface-tint": "#505e7e",
+        "soft-mint": "#E8F0EC", "text-muted": "#5A6E85",
+        "accent-teal": "#CBE7E3", "accent-lavender": "#E3E0F2", "accent-orange": "#F5A97E", "star-glow": "#F7D070"
+      },
+      borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+      spacing: { "micro": "4px", "space-2": "8px", "space-3": "12px", "space-4": "16px", "space-6": "24px", "space-8": "32px" },
+      fontFamily: {
+        "display-xl": ["Playfair Display"], "display-lg": ["Playfair Display"],
+        "headline-md": ["Inter"], "body-base": ["Inter"], "body-sm": ["Inter"], "caption": ["Inter"]
+      },
+      fontSize: {
+        "display-xl": ["40px", {"lineHeight":"1.1","fontWeight":"700"}],
+        "display-lg": ["28px", {"lineHeight":"1.2","fontWeight":"500"}],
+        "headline-md": ["20px", {"lineHeight":"1.4","fontWeight":"600"}],
+        "body-base": ["16px", {"lineHeight":"1.6","fontWeight":"400"}],
+        "body-sm": ["14px", {"lineHeight":"1.5","fontWeight":"300"}],
+        "caption": ["12px", {"lineHeight":"1.4","fontWeight":"500"}]
+      }
+    }}
+  }
+</script>
+
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; display:inline-block; line-height:1; vertical-align:middle; }
+  .fill1 { font-variation-settings: 'FILL' 1; }
+  html, body { height:100%; }
+  body { background-color:#FBF9F6; color:#071834; -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent; margin:0; }
+  ::-webkit-scrollbar { width:0; background:transparent; }
+  .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+  .no-scrollbar::-webkit-scrollbar { display:none; }
+
+  .editorial-shadow { box-shadow: 0 4px 20px -4px rgba(7,24,52,.05); }
+  .chat-bubble-ai { border-bottom-left-radius:4px; }
+  .chat-bubble-user { border-bottom-right-radius:4px; }
+
+  /* App shell (phone canvas on desktop, full-bleed on device) */
+  .shell { position:relative; width:100%; max-width:460px; margin:0 auto; min-height:100dvh; display:flex; flex-direction:column;
+           background:radial-gradient(700px 360px at 70% -8%, rgba(232,240,236,.7), transparent 60%), #FBF9F6; overflow:hidden; }
+  @media (min-width:480px){ body{ padding:16px 0; background:#efece8; } .shell{ min-height:calc(100dvh - 32px); border-radius:34px; box-shadow:0 40px 120px -40px rgba(7,24,52,.4); } }
+
+  #viewport { position:relative; flex:1 1 auto; min-height:0; }
+  .view { position:absolute; inset:0; overflow-y:auto; opacity:0; transform:translateY(8px); pointer-events:none;
+          transition:opacity .5s ease, transform .5s ease; }
+  .view.active { opacity:1; transform:none; pointer-events:auto; }
+
+  /* journey */
+  .journey-path { position:absolute; left:24px; top:8px; bottom:8px; width:2px; background:linear-gradient(180deg,#CBE7E3,#8695b7 50%,#CBE7E3); z-index:0; }
+  .star-glow-effect { box-shadow:0 0 15px #F7D070; background-color:#F7D070 !important; }
+  .floating { animation:floating 3s ease-in-out infinite; }
+  @keyframes floating { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-8px) } }
+
+  .habit.done .marker { box-shadow:0 0 15px #F7D070; background-color:#F7D070 !important; }
+  .habit.done .marker .material-symbols-outlined { font-variation-settings:'FILL' 1; }
+  .habit.done .status-icon { font-variation-settings:'FILL' 1; color:#F7D070; }
+
+  .orb { width:16px;height:16px;border-radius:9999px;background:radial-gradient(circle at 35% 30%,#fff,#F7D070);
+         box-shadow:0 0 14px 1px rgba(247,208,112,.7); animation:orbpop .6s cubic-bezier(.34,1.56,.64,1) both, floating 5s ease-in-out infinite; }
+  @keyframes orbpop { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+
+  /* camera */
+  .camera-overlay { background:linear-gradient(180deg, rgba(251,249,246,0) 0%, rgba(232,240,236,.4) 100%); }
+  .scanline { position:absolute; left:8%; right:8%; height:2px; background:linear-gradient(90deg,transparent,#F5A97E,transparent);
+              box-shadow:0 0 14px 2px rgba(245,169,126,.6); animation:scan 2.6s ease-in-out infinite; }
+  @keyframes scan { 0%{top:14%;opacity:0} 12%{opacity:1} 88%{opacity:1} 100%{top:84%;opacity:0} }
+
+  .fade-in { animation:fadeIn .8s ease-out forwards; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+  .reveal { animation:fadeIn .5s ease both; }
+  .msg-in { animation:fadeIn .45s ease both; }
+
+  .typing span{display:inline-block;width:6px;height:6px;border-radius:99px;background:#5A6E85;opacity:.5;animation:blink 1.2s infinite both}
+  .typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-3px);opacity:.9}}
+
+  .action-pill{transition:transform .2s cubic-bezier(.4,0,.2,1)} .action-pill:active{transform:scale(.96)}
+  .mic.listening{animation:micpulse 1.1s ease-in-out infinite;color:#F5A97E}
+  @keyframes micpulse{0%,100%{box-shadow:0 0 0 0 rgba(245,169,126,.55)}50%{box-shadow:0 0 0 10px transparent}}
+
+  .panel-slide{transform:translateX(100%);transition:transform .5s cubic-bezier(.22,1,.36,1)} .panel-slide.open{transform:none}
+  .overlay-fade{opacity:0;pointer-events:none;transition:opacity .6s ease} .overlay-fade.show{opacity:1;pointer-events:auto}
+
+  .breath-orb{width:180px;height:180px;border-radius:9999px;
+    background:radial-gradient(circle at 38% 32%, #CBE7E3, #E3E0F2);
+    box-shadow:0 0 80px -10px rgba(203,231,227,.8); animation:breathe 9s ease-in-out infinite;}
+  @keyframes breathe{0%,100%{transform:scale(.72)}44%,56%{transform:scale(1.12)}}
+  .ring-progress{transition:stroke-dashoffset 300s linear}
+
+  #toast{transition:opacity .4s ease, transform .4s ease}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.12s!important}
+  }
+</style>
+</head>
+
+<body>
+<div id="app" class="shell">
+
+  <!-- ============ APP HEADER ============ -->
+  <header id="appHeader" class="hidden shrink-0 flex justify-between items-center px-space-8 pt-space-4 pb-space-2 bg-background-base sticky top-0 z-40">
+    <div class="w-10 h-10 rounded-full overflow-hidden bg-accent-teal border-2 border-white editorial-shadow grid place-items-center">
+      <span class="material-symbols-outlined text-primary fill1">spa</span>
+    </div>
+    <h1 class="font-display-lg text-display-lg text-primary">Qetos</h1>
+    <button onclick="switchView('more')" class="material-symbols-outlined text-primary active:scale-95 transition-transform">settings</button>
+  </header>
+
+  <!-- ============ VIEWPORT ============ -->
+  <main id="viewport" class="hidden">
+
+    <!-- ===== FOOD ===== -->
+    <section id="view-food" class="view px-space-8 pb-40 pt-space-2"><div id="foodBody"></div></section>
+
+    <!-- ===== CHAT ===== -->
+    <section id="view-chat" class="view active px-space-8 pb-40 pt-space-2">
+      <!-- Energy Stability Score -->
+      <section class="bg-soft-mint p-space-6 rounded-[24px] flex flex-col gap-space-4 mt-space-2">
+        <div class="flex justify-between items-end">
+          <div class="flex flex-col">
+            <span class="font-caption text-text-muted flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">bolt</span> ENERGY STABILITY SCORE
+            </span>
+            <span class="font-display-xl text-display-xl text-primary mt-1"><span id="energyVal">88</span>%</span>
+          </div>
+          <div class="flex items-center gap-1 text-on-secondary-container bg-white/40 px-3 py-1 rounded-full">
+            <span class="material-symbols-outlined text-[16px]">trending_up</span><span class="font-caption">Gaining</span>
+          </div>
+        </div>
+        <div class="w-full h-3 bg-white/50 rounded-full overflow-hidden">
+          <div id="energyBar" class="h-full w-[88%] bg-gradient-to-r from-accent-teal to-primary rounded-full transition-[width] duration-1000"></div>
+        </div>
+        <div class="flex flex-col gap-space-4">
+          <p class="font-body-sm text-text-muted italic">Calm &amp; resilient · trending gently upward</p>
+          <button onclick="logEnergyWin()" class="bg-primary text-white font-body-base py-space-3 px-space-6 rounded-full w-full active:scale-95 transition-transform">Log My Energy Win</button>
+        </div>
+      </section>
+
+      <div id="chatLog" class="flex flex-col gap-space-6 mt-space-6"></div>
+    </section>
+
+    <!-- ===== LOG / OMNI-CAMERA ===== -->
+    <section id="view-log" class="view px-space-8 pb-40 pt-space-2">
+      <section class="mb-space-6">
+        <h2 class="font-display-xl text-display-xl text-primary leading-tight">Presence</h2>
+        <p class="font-body-base text-text-muted mt-space-2">Acknowledge your metabolic rhythm through a gentle lens.</p>
+      </section>
+
+      <!-- mode toggle -->
+      <div class="flex p-1 rounded-full bg-soft-mint w-max mb-space-4 text-caption font-caption">
+        <button id="modeFood" onclick="setLogMode('food')" class="px-space-4 py-2 rounded-full transition bg-primary text-white">Food</button>
+        <button id="modeKetone" onclick="setLogMode('ketone')" class="px-space-4 py-2 rounded-full transition text-primary">Ketones</button>
+        <button id="modeDoc" onclick="setLogMode('document')" class="px-space-4 py-2 rounded-full transition text-primary">Lab / Doc</button>
+      </div>
+
+      <!-- Omni-Camera hub -->
+      <section class="mb-space-6 relative">
+        <div class="w-full aspect-[4/5] rounded-[32px] overflow-hidden bg-soft-mint relative flex flex-col items-center justify-center border-2 border-transparent">
+          <div class="absolute inset-0 camera-overlay"></div>
+          <div class="scanline"></div>
+          <div class="z-10 flex flex-col items-center text-center px-space-6">
+            <button onclick="runShutter()" class="w-24 h-24 rounded-full bg-primary flex items-center justify-center text-on-primary mb-space-4 action-pill cursor-pointer">
+              <span id="camIcon" class="material-symbols-outlined text-[40px]">photo_camera</span>
+            </button>
+            <h3 id="camTitle" class="font-headline-md text-headline-md text-primary">Scan or Log Anything</h3>
+            <p id="camSub" class="font-body-sm text-primary/70 max-w-[220px] mt-space-2">Rapid scan for food, labels, or wellness markers</p>
+          </div>
+          <div class="absolute top-space-6 left-space-6 border-t-2 border-l-2 border-primary/20 w-8 h-8"></div>
+          <div class="absolute top-space-6 right-space-6 border-t-2 border-r-2 border-primary/20 w-8 h-8"></div>
+          <div class="absolute bottom-space-6 left-space-6 border-b-2 border-l-2 border-primary/20 w-8 h-8"></div>
+          <div class="absolute bottom-space-6 right-space-6 border-b-2 border-r-2 border-primary/20 w-8 h-8"></div>
+        </div>
+      </section>
+
+      <div id="logResult" class="hidden mb-space-6"></div>
+
+      <!-- bento categories -->
+      <section class="grid grid-cols-2 gap-space-4">
+        <div onclick="setLogMode('food'); toast('Food logging selected')" class="bg-soft-mint p-space-6 rounded-[24px] flex flex-col justify-between h-40 action-pill cursor-pointer">
+          <span class="material-symbols-outlined text-primary">eco</span><div><h4 class="font-headline-md text-headline-md text-primary">Food</h4><p class="font-caption text-text-muted mt-micro">Nourishment log</p></div>
+        </div>
+        <div onclick="switchView('chat'); toast('Tell the Concierge how you feel')" class="bg-accent-lavender/40 p-space-6 rounded-[24px] flex flex-col justify-between h-40 action-pill cursor-pointer">
+          <span class="material-symbols-outlined text-primary">visibility</span><div><h4 class="font-headline-md text-headline-md text-primary">Senses</h4><p class="font-caption text-text-muted mt-micro">Body intuition</p></div>
+        </div>
+        <div onclick="logEnergyWin()" class="bg-accent-teal/40 p-space-6 rounded-[24px] flex flex-col justify-between h-40 action-pill cursor-pointer">
+          <span class="material-symbols-outlined text-primary fill1">star</span><div><h4 class="font-headline-md text-headline-md text-primary">Energy</h4><p class="font-caption text-text-muted mt-micro">Vitality spark</p></div>
+        </div>
+        <div onclick="setLogMode('document'); toast('Scan a lab report or ketone strip')" class="bg-soft-mint p-space-6 rounded-[24px] flex flex-col justify-between h-40 action-pill cursor-pointer">
+          <span class="material-symbols-outlined text-primary">analytics</span><div><h4 class="font-headline-md text-headline-md text-primary">Metrics</h4><p class="font-caption text-text-muted mt-micro">Core data</p></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ===== HABITS / DRESS JOURNEY ===== -->
+    <section id="view-habits" class="view px-space-8 pb-40 pt-space-2">
+      <section class="mb-space-6">
+        <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">DRESS Protocol</p>
+        <h2 class="font-display-lg text-display-lg text-primary mb-space-2">Your Daily Flow</h2>
+        <p class="text-text-muted font-body-sm max-w-xs">A compassionate journey through metabolic and mental harmony. No clocks, no streaks.</p>
+      </section>
+
+      <!-- wins -->
+      <div class="grid grid-cols-2 gap-space-4 mb-space-6">
+        <div class="bg-surface-container-lowest p-space-4 rounded-[24px]">
+          <div class="flex items-center justify-between"><span class="font-caption text-text-muted">CRAVING WINS</span>
+            <button onclick="addWin('craving')" class="w-7 h-7 rounded-full bg-accent-lavender text-primary grid place-items-center active:scale-90 transition"><span class="material-symbols-outlined text-[16px]">add</span></button></div>
+          <p class="font-display-lg text-display-lg text-primary mt-1"><span id="cravingCount">1</span></p>
+          <p class="font-caption text-text-muted">self-compassion</p>
+        </div>
+        <div class="bg-surface-container-lowest p-space-4 rounded-[24px]">
+          <div class="flex items-center justify-between"><span class="font-caption text-text-muted">HABIT WINS</span>
+            <button onclick="addWin('habit')" class="w-7 h-7 rounded-full bg-accent-teal text-primary grid place-items-center active:scale-90 transition"><span class="material-symbols-outlined text-[16px]">add</span></button></div>
+          <p class="font-display-lg text-display-lg text-primary mt-1"><span id="habitCount">3</span></p>
+          <p class="font-caption text-text-muted">quiet resilience</p>
+        </div>
+      </div>
+
+      <div class="bg-soft-mint rounded-[24px] p-space-4 mb-space-6">
+        <p class="font-caption text-text-muted mb-space-3">YOUR GARDEN OF WINS</p>
+        <div id="orbGarden" class="flex flex-wrap gap-3 items-center min-h-[18px]"></div>
+      </div>
+
+      <div id="journey" class="relative"></div>
+    </section>
+
+    <!-- ===== MORE ===== -->
+    <section id="view-more" class="view px-space-8 pb-40 pt-space-2">
+      <h2 class="font-display-lg text-display-lg text-primary mb-space-6">More</h2>
+      <div class="flex items-center gap-space-4 bg-surface-container-lowest p-space-4 rounded-[24px] mb-space-6 editorial-shadow">
+        <div class="w-12 h-12 rounded-full bg-primary text-white grid place-items-center font-display-lg">R</div>
+        <div class="min-w-0"><p class="font-headline-md text-primary truncate">Raul Falcon</p><p class="font-caption text-text-muted truncate">raul@rfalcon.com · Founders</p></div>
+        <span class="material-symbols-outlined text-accent-teal ml-auto fill1">verified</span>
+      </div>
+      <div id="settingsList" class="bg-surface-container-lowest rounded-[24px] overflow-hidden editorial-shadow"></div>
+      <p class="text-center font-caption text-text-muted mt-space-6">Qetos · v0.1 · made with care</p>
+    </section>
+  </main>
+
+  <!-- ============ BOTTOM NAV ============ -->
+  <nav id="bottomNav" class="hidden shrink-0 z-50 flex justify-around items-center px-space-2 pb-space-6 pt-space-2 bg-surface-container-lowest rounded-t-xl">
+    <a onclick="switchView('food')" id="nav-food" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
+      <span class="material-symbols-outlined">grocery</span><span class="font-caption text-caption">FOOD</span></a>
+    <a onclick="switchView('chat')" id="nav-chat" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
+      <span class="material-symbols-outlined">chat_bubble</span><span class="font-caption text-caption">CHAT</span></a>
+    <a onclick="switchView('log')" id="nav-log" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
+      <span class="material-symbols-outlined">photo_camera</span><span class="font-caption text-caption">LOG</span></a>
+    <a onclick="switchView('habits')" id="nav-habits" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
+      <span class="material-symbols-outlined">auto_stories</span><span class="font-caption text-caption">HABITS</span></a>
+    <a onclick="switchView('more')" id="nav-more" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
+      <span class="material-symbols-outlined">more_horiz</span><span class="font-caption text-caption">MORE</span></a>
+  </nav>
+
+  <!-- ============ CHAT INPUT DOCK ============ -->
+  <div id="chatDock" class="hidden absolute left-0 right-0 z-40 px-space-8 pb-2 pt-2 bg-gradient-to-t from-background-base via-background-base to-transparent" style="bottom:84px">
+    <div class="flex gap-space-2 overflow-x-auto no-scrollbar mb-space-3">
+      <button onclick="quickAction('next')" class="whitespace-nowrap bg-white/80 border border-secondary-container px-space-4 py-2 rounded-full font-caption text-primary active:scale-95 transition">What's next?</button>
+      <button onclick="quickAction('win')" class="whitespace-nowrap bg-white/80 border border-secondary-container px-space-4 py-2 rounded-full font-caption text-primary active:scale-95 transition">Log another win</button>
+      <button onclick="quickAction('score')" class="whitespace-nowrap bg-white/80 border border-secondary-container px-space-4 py-2 rounded-full font-caption text-primary active:scale-95 transition">Check my score</button>
+    </div>
+    <div class="relative">
+      <input id="chatInput" type="text" autocomplete="off" placeholder="Log foods, symptoms, or energy levels..."
+             onkeydown="if(event.key==='Enter') handleSend()"
+             class="w-full h-14 bg-white rounded-full pl-space-6 pr-24 editorial-shadow border-none focus:ring-2 focus:ring-accent-teal font-body-sm placeholder:text-text-muted"/>
+      <button id="micBtn" onclick="toggleMic()" class="mic absolute right-14 top-2 w-10 h-10 rounded-full grid place-items-center text-text-muted active:scale-90 transition"><span class="material-symbols-outlined">mic</span></button>
+      <button onclick="handleSend()" class="absolute right-2 top-2 w-10 h-10 bg-accent-teal rounded-full grid place-items-center text-primary active:scale-90 transition"><span class="material-symbols-outlined">arrow_upward</span></button>
+    </div>
+  </div>
+
+  <!-- ============ AUTH / WELCOME ============ -->
+  <div id="auth" class="absolute inset-0 z-[60] flex items-center justify-center p-space-6 overflow-hidden bg-background-base">
+    <div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent-teal/20 rounded-full blur-[100px] -z-10"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-accent-lavender/30 rounded-full blur-[120px] -z-10"></div>
+    <main id="authCard" class="fade-in w-full max-w-md flex flex-col items-center transition-all duration-1000">
+      <header class="text-center mb-space-8 flex flex-col items-center">
+        <div class="mb-space-6 w-20 h-20 rounded-full overflow-hidden border border-outline-variant bg-surface-container-lowest grid place-items-center">
+          <span class="material-symbols-outlined text-primary text-[40px] fill1">spa</span>
+        </div>
+        <h1 class="font-display-xl text-display-xl text-primary mb-space-2">Welcome to Qetos.</h1>
+        <p class="font-body-base text-text-muted tracking-wide">Your protocol awaits.</p>
+      </header>
+      <section class="w-full space-y-space-4">
+        <button onclick="signIn('Google')" class="action-pill w-full flex items-center justify-center py-space-4 px-space-6 border border-primary bg-surface-container-lowest rounded-full">
+          <span class="material-symbols-outlined mr-space-3 text-primary">login</span><span class="font-body-base text-primary font-semibold">Continue with Google</span></button>
+        <button onclick="signIn('Instagram')" class="action-pill w-full flex items-center justify-center py-space-4 px-space-6 bg-accent-lavender rounded-full">
+          <span class="material-symbols-outlined mr-space-3 text-primary">photo_camera</span><span class="font-body-base text-primary font-semibold">Connect with Instagram</span></button>
+        <div class="flex items-center py-space-2"><div class="flex-grow border-t border-outline-variant"></div><span class="px-space-4 font-caption text-text-muted">OR</span><div class="flex-grow border-t border-outline-variant"></div></div>
+        <div class="space-y-space-3">
+          <input id="authEmail" type="text" value="raul@rfalcon.com" class="w-full bg-surface-container-low border-none rounded-full py-space-3 px-space-6 font-body-base focus:ring-2 focus:ring-primary-container placeholder:text-outline" placeholder="Email or Phone Number"/>
+          <button id="magicBtn" onclick="sendMagic()" class="action-pill w-full bg-primary text-on-primary rounded-full py-space-4 px-space-6 font-body-base font-semibold">Send Magic Link / SMS OTP</button>
+        </div>
+      </section>
+      <footer class="mt-space-8 text-center px-space-6">
+        <p class="font-caption text-text-muted">By continuing, you agree to our <a class="underline" href="#">Terms</a> and <a class="underline" href="#">Privacy Policy</a>.</p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- ============ SETTINGS DETAIL PANEL ============ -->
+  <div id="settingPanel" class="panel-slide absolute inset-0 z-50 bg-background-base flex flex-col">
+    <div class="flex items-center gap-space-3 px-space-6 py-space-4 border-b border-outline-variant bg-background-base">
+      <button onclick="closeSetting()" class="w-9 h-9 rounded-full bg-surface-container-lowest grid place-items-center text-primary active:scale-95 transition"><span class="material-symbols-outlined">chevron_left</span></button>
+      <h2 id="settingTitle" class="font-display-lg text-display-lg text-primary"></h2>
+    </div>
+    <div id="settingBody" class="flex-1 overflow-y-auto p-space-6 no-scrollbar"></div>
+  </div>
+
+  <!-- ============ BREATHING OVERLAY ============ -->
+  <div id="breathing" class="overlay-fade absolute inset-0 z-[55] flex flex-col items-center justify-center text-center px-space-8"
+       style="background:radial-gradient(120% 90% at 50% 20%, #E8F0EC, #FBF9F6)">
+    <p class="font-caption text-text-muted uppercase tracking-widest mb-10">Five minutes of calm</p>
+    <div class="relative grid place-items-center mb-10">
+      <svg width="240" height="240" class="absolute -rotate-90"><circle cx="120" cy="120" r="110" fill="none" stroke="#c5c6ce" stroke-width="3"></circle>
+        <circle id="breathRing" cx="120" cy="120" r="110" fill="none" stroke="#F5A97E" stroke-width="3" stroke-linecap="round" stroke-dasharray="691" stroke-dashoffset="691" class="ring-progress"></circle></svg>
+      <div class="breath-orb grid place-items-center"><span id="breathPhase" class="font-display-lg text-display-lg text-primary">Breathe in</span></div>
+    </div>
+    <p class="text-text-muted font-body-sm max-w-[78%] mb-9">Let the orb guide you. In as it grows, out as it softens. No bells — leave whenever you feel ready.</p>
+    <button onclick="endBreathing()" class="font-body-sm px-space-6 py-space-3 rounded-full bg-surface-container-lowest text-primary active:scale-95 transition">End gently</button>
+  </div>
+
+  <!-- ============ TOAST ============ -->
+  <div id="toast" class="pointer-events-none absolute left-1/2 -translate-x-1/2 z-[70] opacity-0" style="bottom:120px; transform:translate(-50%,8px)">
+    <div class="flex items-center gap-space-2 bg-primary text-white font-body-sm px-space-4 py-space-3 rounded-full editorial-shadow">
+      <span class="material-symbols-outlined text-accent-teal text-[18px]">check_circle</span><span id="toastMsg"></span>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

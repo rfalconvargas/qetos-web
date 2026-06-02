@@ -1,0 +1,16 @@
+{
+  "appId": "com.ketofy.app",
+  "appName": "Qetos",
+  "webDir": "www",
+  "backgroundColor": "#FBF9F6",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#FBF9F6",
+      "showSpinner": false
+    },
+    "Keyboard": {
+      "resize": "body"
+    }
+  }
+}
