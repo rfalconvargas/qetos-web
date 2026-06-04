@@ -57,6 +57,8 @@ Deno.serve(async (req) => {
     if (!phone) return json({ ok: false, error: "invalid_phone" }, 400, origin);
     if (body.sms_consent !== true) return json({ ok: false, error: "consent_required" }, 400, origin);
 
+    const first_name = typeof body.first_name === "string" ? (body.first_name.trim().slice(0, 80) || null) : null;
+    const last_name = typeof body.last_name === "string" ? (body.last_name.trim().slice(0, 80) || null) : null;
     const goal = typeof body.goal === "string" ? body.goal.slice(0, 120) : null;
     const source = typeof body.source === "string" ? body.source.slice(0, 60) : "landing";
     const referrer = typeof body.referrer === "string" ? body.referrer.slice(0, 300) : null;
@@ -71,7 +73,7 @@ Deno.serve(async (req) => {
     // Dedupe on phone — never error or leak whether it already existed.
     const { error } = await sb
       .from("waitlist")
-      .upsert({ phone, sms_consent: true, goal, source, referrer, user_agent }, { onConflict: "phone", ignoreDuplicates: true });
+      .upsert({ phone, first_name, last_name, sms_consent: true, goal, source, referrer, user_agent }, { onConflict: "phone", ignoreDuplicates: true });
 
     if (error) { console.error("[waitlist] insert error:", error.message); return json({ ok: false, error: "server" }, 500, origin); }
     return json({ ok: true }, 200, origin);

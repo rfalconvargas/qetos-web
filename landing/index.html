@@ -1557,6 +1557,9 @@ a {
 
 .waitlist__form { display: grid; gap: 14px; text-align: left; }
 .waitlist__field { display: grid; gap: 8px; }
+.waitlist__row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.waitlist__opt { color: rgb(232 240 236 / 0.5); font-weight: 400; }
+@media (max-width: 480px) { .waitlist__row { grid-template-columns: 1fr; } }
 .waitlist__label { color: rgb(232 240 236 / 0.85); font-size: 13px; font-weight: 600; }
 
 .waitlist__input,
@@ -1942,6 +1945,32 @@ a {
           </p>
 
           <form class="waitlist__form" data-waitlist-form novalidate>
+            <div class="waitlist__row">
+              <div class="waitlist__field">
+                <label class="waitlist__label" for="waitlist-first">First name</label>
+                <input
+                  class="waitlist__input"
+                  id="waitlist-first"
+                  name="first_name"
+                  type="text"
+                  autocomplete="given-name"
+                  placeholder="Maya"
+                  aria-describedby="waitlist-error"
+                />
+              </div>
+              <div class="waitlist__field">
+                <label class="waitlist__label" for="waitlist-last">Last name <span class="waitlist__opt">(optional)</span></label>
+                <input
+                  class="waitlist__input"
+                  id="waitlist-last"
+                  name="last_name"
+                  type="text"
+                  autocomplete="family-name"
+                  placeholder="Rivera"
+                />
+              </div>
+            </div>
+
             <div class="waitlist__field">
               <label class="waitlist__label" for="waitlist-phone">Phone number</label>
               <input
@@ -2455,6 +2484,8 @@ class WaitlistForm {
   constructor() {
     this.form = document.querySelector("[data-waitlist-form]");
     if (!this.form) return;
+    this.first = this.form.querySelector("#waitlist-first");
+    this.last = this.form.querySelector("#waitlist-last");
     this.phone = this.form.querySelector("#waitlist-phone");
     this.goal = this.form.querySelector("#waitlist-goal");
     this.consent = this.form.querySelector("#waitlist-consent");
@@ -2463,18 +2494,19 @@ class WaitlistForm {
     this.success = document.querySelector("[data-waitlist-success]");
     this.form.addEventListener("submit", (e) => this.onSubmit(e));
     this.phone.addEventListener("input", () => this.clearError());
+    this.first.addEventListener("input", () => this.clearError());
   }
 
-  showError(message) {
+  showError(message, field) {
     this.error.textContent = message;
     this.error.hidden = false;
-    this.phone.classList.add("is-invalid");
+    (field || this.phone).classList.add("is-invalid");
   }
 
   clearError() {
     this.error.hidden = true;
     this.error.textContent = "";
-    this.phone.classList.remove("is-invalid");
+    [this.phone, this.first].forEach((el) => el && el.classList.remove("is-invalid"));
   }
 
   isValidPhone(raw) {
@@ -2486,6 +2518,13 @@ class WaitlistForm {
   async onSubmit(event) {
     event.preventDefault();
     this.clearError();
+
+    const firstName = this.first.value.trim();
+    if (!firstName) {
+      this.showError("Please enter your first name.", this.first);
+      this.first.focus();
+      return;
+    }
 
     const raw = this.phone.value.trim();
     if (!this.isValidPhone(raw)) {
@@ -2506,6 +2545,8 @@ class WaitlistForm {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          first_name: firstName,
+          last_name: this.last.value.trim() || undefined,
           phone: raw,
           sms_consent: true,
           goal: this.goal.value || undefined,
