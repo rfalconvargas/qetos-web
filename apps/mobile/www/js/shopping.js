@@ -322,6 +322,10 @@
 
     if (incoming && UUID_RE.test(incoming)) {
       shop.isVisitor = true;
+      // A link-shared visitor has no account and doesn't need one — drop the
+      // login/welcome gate so the shared list is reachable. The one-time medical
+      // consent gate (handled in app.js) still applies.
+      try { const a = document.getElementById("auth"); if (a) a.style.display = "none"; } catch (e) {}
       try { await Store.set(TOKEN_KEY, incoming); } catch (e) {}
       shop.me = await resolveName();
       if (await loadList(incoming)) {
