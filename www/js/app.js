@@ -257,6 +257,7 @@ function setLogMode(mode){
     document: ["description",    "Scan a Lab or Plan",   "Photo or PDF of bloodwork or your health plan."],
   }[mode] || ["photo_camera","Scan or Log Anything","Rapid scan for food, labels, or wellness markers"];
   $("camIcon").textContent = cfg[0]; $("camTitle").textContent = cfg[1]; $("camSub").textContent = cfg[2];
+  const mb = $("manualKetoneBtn"); if(mb) mb.classList.toggle("hidden", mode!=="ketone");
 }
 
 // Capture a photo (native camera on device, file picker on web). Returns {data,mimeType} base64.
@@ -282,6 +283,25 @@ async function capturePhoto(mode){
   });
 }
 
+// Save a captured log image to a dedicated local folder (Capacitor Filesystem
+// on device, under Data/qetos-logs/<mode>/) and always return a data URL for
+// rendering a thumbnail. On web there's no folder, so only the data URL is set.
+async function saveLogImage(mode, cap){
+  const dataUrl = `data:${cap.mimeType};base64,${cap.data}`;
+  let path = null;
+  try {
+    if(onCapacitor() && window.Capacitor.Plugins.Filesystem){
+      const fs = window.Capacitor.Plugins.Filesystem;
+      const ext = ((cap.mimeType||"image/jpeg").split("/")[1] || "jpg").replace("jpeg","jpg").replace("+xml","");
+      const dir = `qetos-logs/${mode}`;
+      try { await fs.mkdir({ path: dir, directory: "Data", recursive: true }); } catch(_){ /* already exists */ }
+      path = `${dir}/${Date.now()}.${ext}`;
+      await fs.writeFile({ path, data: cap.data, directory: "Data" });   // base64 -> binary
+    }
+  } catch(e){ console.warn("saveLogImage:", e); }
+  return { dataUrl, path };
+}
+
 async function runShutter(){
   haptic();
   const mode = state.logMode;
@@ -289,15 +309,30 @@ async function runShutter(){
   if(!cap){ return; }   // user cancelled the picker
   const out = $("logResult"); out.classList.remove("hidden");
   out.innerHTML = `<div class="bg-surface-container-lowest rounded-[24px] p-space-8 text-center reveal"><div class="w-10 h-10 mx-auto rounded-full border-2 border-soft-mint border-t-accent-orange animate-spin"></div><p class="font-body-sm text-text-muted mt-space-3">${mode==="food"?"Reading your meal…":mode==="ketone"?"Reading your meter…":"Parsing your document…"}</p></div>`;
+  const saved = await saveLogImage(mode, cap);   // persist the photo to the log folder
   try {
     const { result } = await Vision.analyze(mode, cap.data, cap.mimeType);
+    result.image = saved.dataUrl; result.image_path = saved.path;
     state.lastVision = { mode, result };
-    out.innerHTML = renderVision(mode, result);
+    if(mode==="ketone"){
+      out.innerHTML = renderKetone(result, false);   // review/correct, then Save reading
+    } else {
+      out.innerHTML = renderVision(mode, result);
+      persistVision(mode, result).catch(e => console.warn("persist:", e));
+    }
     out.scrollIntoView({ behavior:"smooth", block:"center" });
-    persistVision(mode, result).catch(e => console.warn("persist:", e));
   } catch(e){
-    console.warn("vision failed, demo card:", e);
-    out.innerHTML = (mode==="food") ? foodCard() : (mode==="ketone") ? ketoneFallbackCard() : medicalCard();
+    console.warn("vision failed:", e);
+    if(mode==="ketone"){
+      // OCR failed — open the manual numeric entry with the photo thumbnail.
+      const r = { bhb_mmol:null, glucose_mgdl:null, note:"Couldn't read the meter — type your ketone level below.", image: saved.dataUrl, image_path: saved.path };
+      state.lastVision = { mode:"ketone", result:r };
+      out.innerHTML = renderKetone(r, true);
+      out.scrollIntoView({ behavior:"smooth", block:"center" });
+      const el = $("ketoneInput"); if(el) el.focus();
+    } else {
+      out.innerHTML = (mode==="food") ? foodCard() : medicalCard();
+    }
   }
 }
 
@@ -319,13 +354,7 @@ function renderVision(mode, r){
           : `<p class="font-body-sm text-text-muted mb-space-4">${esc(r.note||"")}</p>`; })()}
       ${discussRow()}</div>`;
   }
-  if(mode==="ketone"){
-    const val = (r.bhb_mmol!=null) ? r.bhb_mmol+" <span class='font-body-sm text-text-muted'>mmol BHB</span>" : (r.glucose_mgdl!=null) ? r.glucose_mgdl+" <span class='font-body-sm text-text-muted'>mg/dL</span>" : "—";
-    return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal text-center">
-      <div class="flex items-center justify-center gap-2 font-caption text-text-muted uppercase tracking-widest mb-space-4"><span class="material-symbols-outlined text-[16px]">monitor_heart</span> Keto-Mojo · read</div>
-      <p class="font-display-xl text-display-xl text-primary mb-space-2">${val}</p>
-      <p class="font-body-sm text-text-muted mb-space-4">${esc(r.note||"")}</p>${discussRow()}</div>`;
-  }
+  if(mode==="ketone"){ return renderKetone(r, false); }
   const list = (arr)=> (arr&&arr.length)?`<ul class="mt-space-2 space-y-2 font-body-sm text-text-muted">${arr.map(x=>`<li>• ${esc(x)}</li>`).join("")}</ul>`:`<p class="font-body-sm text-text-muted mt-space-2">None noted.</p>`;
   const chips = (r.pending_labs||[]).map(p=>`<span class="px-space-4 py-2 rounded-full bg-soft-mint text-primary">${esc(p)}</span>`).join("");
   return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal space-y-space-6">
@@ -341,6 +370,75 @@ function discussRow(){
 }
 function ketoneFallbackCard(){
   return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal text-center"><div class="font-caption text-text-muted uppercase tracking-widest mb-space-4">Keto-Mojo</div><p class="font-display-xl text-display-xl text-primary mb-space-2">1.6 <span class="font-body-sm text-text-muted">mmol BHB</span></p><p class="font-body-sm text-text-muted mb-space-4">Comfortably in nutritional ketosis.</p>${discussRow()}</div>`;
+}
+
+/* ---------- Keto-Mojo card: photo thumbnail + manual pen-edit ---------- */
+// Calm, non-clinical interpretation of a BHB value.
+function ketoneNote(v){
+  if(v==null) return "";
+  if(v<0.5) return "Below nutritional ketosis right now.";
+  if(v<1.5) return "Light nutritional ketosis.";
+  if(v<=3.0) return "Comfortably in nutritional ketosis.";
+  return "High ketones — remember to hydrate and mind your electrolytes.";
+}
+function renderKetone(r, editing){
+  const thumb = r.image
+    ? `<img src="${r.image}" alt="Keto-Mojo log" class="w-9 h-9 rounded-[10px] object-cover border border-outline-variant shrink-0"/>`
+    : `<span class="material-symbols-outlined text-[16px]">monitor_heart</span>`;
+  const tag = r.edited ? " · edited" : (r.image ? " · read" : " · manual");
+  const head = `<div class="flex items-center justify-center gap-2 font-caption text-text-muted uppercase tracking-widest mb-space-4">${thumb} <span>Keto-Mojo${tag}</span></div>`;
+  if(editing){
+    const cur = (r.bhb_mmol!=null) ? r.bhb_mmol : "";
+    return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal text-center">${head}
+      <label class="block max-w-[240px] mx-auto mb-space-4"><span class="block font-caption text-text-muted uppercase tracking-widest mb-2">Ketones · mmol BHB</span>
+        <input id="ketoneInput" type="number" inputmode="decimal" step="0.1" min="0" max="15" value="${cur}" placeholder="e.g. 1.1" class="w-full text-center rounded-[16px] bg-soft-mint border border-outline-variant py-space-4 font-display-xl text-display-xl text-primary focus:ring-2 focus:ring-accent-teal outline-none"/></label>
+      <div class="flex gap-space-2 justify-center">
+        <button onclick="applyKetone()" class="flex-1 py-space-3 rounded-full bg-primary text-white font-body-sm active:scale-95 transition">Save reading</button>
+        ${(r.bhb_mmol!=null||r.glucose_mgdl!=null) ? `<button onclick="renderKetoneView()" class="py-space-3 px-space-5 rounded-full bg-soft-mint text-primary font-body-sm active:scale-95 transition">Cancel</button>` : ""}
+      </div></div>`;
+  }
+  const val = (r.bhb_mmol!=null) ? r.bhb_mmol+" <span class='font-body-sm text-text-muted'>mmol BHB</span>"
+            : (r.glucose_mgdl!=null) ? r.glucose_mgdl+" <span class='font-body-sm text-text-muted'>mg/dL</span>" : "—";
+  const editBtn = r._saved ? "" : `<button onclick="editKetone()" aria-label="Edit reading manually" title="Edit reading" class="w-9 h-9 rounded-full bg-soft-mint text-primary grid place-items-center active:scale-90 transition shrink-0"><span class="material-symbols-outlined text-[20px]">edit</span></button>`;
+  return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal text-center">${head}
+    <div class="flex items-center justify-center gap-space-3 mb-space-2">
+      <p class="font-display-xl text-display-xl text-primary">${val}</p>${editBtn}
+    </div>
+    <p class="font-body-sm text-text-muted mb-space-4">${esc(r.note||"")}</p>
+    ${r._saved ? discussRow() : `<button onclick="commitKetone()" class="w-full py-space-4 rounded-full bg-primary text-white font-body-base active:scale-95 transition">Save reading</button>`}
+  </div>`;
+}
+function renderKetoneView(){ const v=state.lastVision; if(v&&v.mode==="ketone") $("logResult").innerHTML = renderKetone(v.result,false); }
+function editKetone(){ const v=state.lastVision; if(v&&v.mode==="ketone"){ $("logResult").innerHTML = renderKetone(v.result,true); const el=$("ketoneInput"); if(el) el.focus(); } }
+function applyKetone(){
+  const v=state.lastVision; if(!v||v.mode!=="ketone") return;
+  const val = parseFloat($("ketoneInput").value);
+  if(!Number.isFinite(val)||val<0||val>15){ toast("Enter a ketone value, e.g. 1.1"); $("ketoneInput").focus(); return; }
+  const r=v.result; r.bhb_mmol = +val.toFixed(1); if(r.glucose_mgdl===undefined) r.glucose_mgdl=null; r.edited=true; r.note=ketoneNote(r.bhb_mmol);
+  commitKetone();
+}
+async function commitKetone(){
+  const v=state.lastVision; if(!v||v.mode!=="ketone") return;
+  const r=v.result;
+  if(r.bhb_mmol==null && r.glucose_mgdl==null){ editKetone(); return; }   // nothing to save yet
+  if(!r._saved && DB.ready() && DB.currentUser()){
+    try {
+      const gki = (r.bhb_mmol && r.glucose_mgdl) ? +((r.glucose_mgdl/18)/r.bhb_mmol).toFixed(1) : null;
+      await DB.addKetone({ bhb_mmol:r.bhb_mmol, glucose_mgdl:r.glucose_mgdl??null, gki, fasted:null });
+    } catch(e){ console.warn("ketone save:", e); }
+  }
+  r._saved = true;
+  renderKetoneView();
+  haptic(); toast("Ketone reading saved");
+}
+// Start a manual reading from scratch — no camera photo required.
+function manualKetone(){
+  const r = { bhb_mmol:null, glucose_mgdl:null, note:"", image:null };
+  state.lastVision = { mode:"ketone", result:r };
+  const out=$("logResult"); out.classList.remove("hidden");
+  out.innerHTML = renderKetone(r, true);
+  out.scrollIntoView({ behavior:"smooth", block:"center" });
+  const el=$("ketoneInput"); if(el) el.focus();
 }
 function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 
