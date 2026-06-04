@@ -24,6 +24,10 @@
   const TOKEN_KEY = "qetos-shop-token";
   const NAME_KEY  = "qetos-collab-name";
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  // Public origin used to build share links. The installed app runs at
+  // https://localhost (Capacitor) which is useless off-device, so share links
+  // always point at the public web deployment instead.
+  const SHARE_BASE = "https://www-rfalconvargas-projects.vercel.app";
 
   const shop = {
     token: null,
@@ -271,8 +275,7 @@
 
   /* ---------- share sheet ---------- */
   function shareLinkFor(token) {
-    try { const u = new URL(location.href); u.hash = ""; u.searchParams.set("shop", token); return u.toString(); }
-    catch (e) { return location.origin + location.pathname + "?shop=" + token; }
+    return SHARE_BASE + "/?shop=" + encodeURIComponent(token);
   }
   async function openShareSheet() {
     const sheet = $id("shareSheet");
