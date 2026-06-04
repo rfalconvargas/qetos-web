@@ -214,7 +214,7 @@
     shop.list.name = name;
     const token = shop.token || await ensureList();
     if (!token) return;
-    try { await DB.renameSharedList(token, name); note("List renamed"); broadcast(); }
+    try { await DB.renameSharedList(token, name); render(); note("List renamed"); broadcast(); }
     catch (e) { note("Could not rename"); }
   }
 
