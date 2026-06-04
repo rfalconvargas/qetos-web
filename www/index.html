@@ -185,6 +185,10 @@
 
     <!-- ===== HABITS / DRESS JOURNEY ===== -->
     <section id="view-plan" class="view px-space-8 pb-40 pt-space-2">
+      <!-- Daily history header (date nav + calendar) -->
+      <div id="planHeader" class="mb-space-4"></div>
+      <div id="planLog" class="mb-space-8"></div>
+
       <section class="mb-space-6">
         <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">DRESS Protocol</p>
         <h2 class="font-display-lg text-display-lg text-primary mb-space-2">Your Daily Flow</h2>
@@ -317,6 +321,20 @@
       <p class="font-body-base text-text-muted leading-relaxed mb-space-8">Qetos provides general wellness and educational information — not medical advice, diagnosis, or treatment. It is not a substitute for your physician or prescriber. Never change medications based on the app. If you're in crisis, call or text 988 (US). By continuing you agree this is informational only.</p>
       <button onclick="acceptConsent()" class="action-pill w-full bg-primary text-on-primary rounded-full py-space-4 px-space-6 font-body-base font-semibold mb-space-4">I understand &amp; agree</button>
       <p class="font-caption text-text-muted">Read our <a class="underline" href="#">Terms</a> and <a class="underline" href="#">Privacy Policy</a>.</p>
+    </div>
+  </div>
+
+  <!-- ============ PLAN · JUMP-TO-DAY CALENDAR ============ -->
+  <div id="planCalendar" class="hidden absolute inset-0 z-[75] flex items-end justify-center" role="dialog" aria-modal="true" aria-label="Jump to a day">
+    <div onclick="closePlanCalendar()" class="absolute inset-0 bg-primary/30" style="backdrop-filter:blur(2px)"></div>
+    <div class="relative w-full max-w-md bg-background-base rounded-t-[28px] p-space-6 pb-space-8 reveal" style="box-shadow:0 -8px 40px rgba(7,24,52,.18)">
+      <div class="w-10 h-1.5 rounded-full bg-outline-variant mx-auto mb-space-4"></div>
+      <div class="flex items-center justify-between mb-space-2">
+        <h3 class="font-display-lg text-display-lg text-primary">Jump to a day</h3>
+        <button onclick="closePlanCalendar()" aria-label="Close" class="w-9 h-9 rounded-full bg-surface-container-lowest text-primary grid place-items-center active:scale-95 transition"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <p class="font-caption text-text-muted mb-space-4">Last 28 days — tap a date to load that day's logs.</p>
+      <div id="planCalGrid"></div>
     </div>
   </div>
 

@@ -169,6 +169,7 @@ function switchView(view){
   const ai = active.querySelector(".material-symbols-outlined"); if(ai) ai.style.fontVariationSettings = "'FILL' 1";
   $("chatDock").style.display = (view === "chat") ? "block" : "none";
   if (view === "chat") scrollChat();
+  if (view === "plan") { renderPlanHeader(); loadPlanDay(); }
 }
 
 /* ===================== TOAST ===================== */
@@ -347,6 +348,83 @@ function impactBadge(v){
 }
 function openLdlInfo(){ const s=$("ldlSheet"); if(s){ s.classList.remove("hidden"); try{ haptic(); }catch(e){} } }
 function closeLdlInfo(){ const s=$("ldlSheet"); if(s) s.classList.add("hidden"); }
+
+/* ===================== PLAN · persistent daily history ===================== */
+function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+function ymd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function isSameDay(a,b){ return ymd(a)===ymd(b); }
+function fmtPlanDate(d){ return d.toLocaleDateString(undefined,{ weekday:"long", month:"long", day:"numeric", year:"numeric" }); }
+
+function renderPlanHeader(){
+  const el=$("planHeader"); if(!el) return;
+  if(!state.planDate) state.planDate=startOfDay(new Date());
+  const d=state.planDate, today=startOfDay(new Date());
+  const isToday=isSameDay(d,today), atToday=d>=today;
+  el.innerHTML = `
+    <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">Daily history</p>
+    <div class="flex items-center justify-between gap-space-2">
+      <button onclick="planShiftDay(-1)" aria-label="Previous day" class="w-10 h-10 rounded-full bg-surface-container-lowest text-primary grid place-items-center active:scale-90 transition shrink-0"><span class="material-symbols-outlined">chevron_left</span></button>
+      <button onclick="openPlanCalendar()" class="flex-1 min-w-0 px-space-2 active:scale-[0.98] transition" aria-label="Open calendar to jump to a date">
+        <span class="block text-center font-display-lg text-display-lg text-primary leading-tight">${esc(fmtPlanDate(d))}</span>
+        <span class="block text-center font-caption text-text-muted">${isToday?"Today":"Tap to jump"} ▾</span>
+      </button>
+      <button onclick="planShiftDay(1)" aria-label="Next day" ${atToday?"disabled":""} class="w-10 h-10 rounded-full bg-surface-container-lowest text-primary grid place-items-center active:scale-90 transition shrink-0 ${atToday?"opacity-40 pointer-events-none":""}"><span class="material-symbols-outlined">chevron_right</span></button>
+    </div>`;
+}
+function planShiftDay(delta){
+  const today=startOfDay(new Date());
+  const d=startOfDay(state.planDate||today); d.setDate(d.getDate()+delta);
+  if(d>today) return;   // no future history
+  state.planDate=d; renderPlanHeader(); loadPlanDay();
+}
+async function loadPlanDay(){
+  const log=$("planLog"); if(!log) return;
+  if(!state.planDate) state.planDate=startOfDay(new Date());
+  log.innerHTML = `<p class="font-body-sm text-text-muted">Loading…</p>`;
+  let meals=[];
+  if(DB.ready() && DB.currentUser()){
+    try{ meals = await DB.listMealsByDay(ymd(state.planDate)); }catch(e){ console.warn("listMealsByDay:", e); }
+  }
+  log.innerHTML = renderPlanLog(meals);
+}
+function renderPlanLog(meals){
+  if(!meals || !meals.length){
+    return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 text-center">
+      <p class="font-body-sm text-text-muted">No meals logged on this day.</p>
+      <button onclick="switchView('recipes')" class="mt-space-3 font-caption text-primary inline-flex items-center gap-1 active:scale-95 transition">Log a meal <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button>
+    </div>`;
+  }
+  return `<div class="space-y-space-3">${meals.map(m=>{
+    const t = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour:"numeric", minute:"2-digit" }) : "";
+    const meta = [t, m.kcal?`${Math.round(m.kcal)} kcal`:"", (m.net_carbs_g!=null)?`${m.net_carbs_g}g net carbs`:""].filter(Boolean).join(" · ");
+    return `<div class="bg-surface-container-lowest rounded-[20px] p-space-4 flex items-center gap-space-3">
+      <span class="text-[22px] shrink-0" aria-hidden="true">${foodEmoji(m.name||"")}</span>
+      <div class="flex-1 min-w-0"><p class="font-body-base text-primary truncate">${esc(m.name||"Meal")}</p>
+        <p class="font-caption text-text-muted">${esc(meta)}</p></div>
+    </div>`;
+  }).join("")}</div>`;
+}
+function openPlanCalendar(){ const o=$("planCalendar"); if(!o) return; renderPlanCalendar(); o.classList.remove("hidden"); }
+function closePlanCalendar(){ const o=$("planCalendar"); if(o) o.classList.add("hidden"); }
+function renderPlanCalendar(){
+  const grid=$("planCalGrid"); if(!grid) return;
+  if(!state.planDate) state.planDate=startOfDay(new Date());
+  const today=startOfDay(new Date());
+  const days=[]; for(let i=27;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); days.push(d); }   // rolling 28-day window
+  const dow=["S","M","T","W","T","F","S"];
+  const pads=Array.from({length:days[0].getDay()},()=>`<div></div>`).join("");
+  const cells=days.map(d=>{
+    const sel=isSameDay(d,state.planDate), isToday=isSameDay(d,today);
+    const cls = sel?"bg-primary text-white":isToday?"bg-accent-teal text-primary":"text-primary";
+    return `<button onclick="selectPlanDay('${ymd(d)}')" class="aspect-square rounded-full grid place-items-center font-body-sm active:scale-90 transition ${cls}">${d.getDate()}</button>`;
+  }).join("");
+  grid.innerHTML = `<div class="grid grid-cols-7 gap-1 mb-space-2 text-center font-caption text-text-muted">${dow.map(x=>`<div>${x}</div>`).join("")}</div>
+    <div class="grid grid-cols-7 gap-1">${pads}${cells}</div>`;
+}
+function selectPlanDay(iso){
+  state.planDate = startOfDay(new Date(iso+"T00:00:00"));
+  closePlanCalendar(); renderPlanHeader(); loadPlanDay();
+}
 function renderVision(mode, r){
   if(mode==="food"){
     return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal">
@@ -1014,7 +1092,7 @@ async function init(){
   await checkConsent();
   await loadState();
   await loadProfile();
-  renderJourney(); renderSettings(); renderFood();
+  renderJourney(); renderSettings(); renderFood(); renderPlanHeader();
   const total = state.cravingWins + state.habitWins; for(let i=0;i<total;i++) addOrb();
   // real Supabase session (e.g. returning from a magic link) logs in + seeds
   let session = null; try { session = await DB.getSession(); } catch(e){}
