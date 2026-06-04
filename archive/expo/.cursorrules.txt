@@ -1,0 +1,25 @@
+# Project Master Rules: Mytabolism AI Concierge Hub
+
+## 1. Core Intent & Target User
+- **Purpose:** An AI-first metabolic concierge for metabolic psychiatry patients on a therapeutic ketogenic protocol.
+- **Mission:** High protocol adherence through inquisitive, low-friction conversational UX, functioning as an auxiliary nervous system.
+
+## 2. Tech Stack Constraints
+- **Framework:** React Native, Expo Router, TypeScript.
+- **Styling:** React Native `StyleSheet` only (Strictly forbidden: Tailwind, NativeWind).
+- **Icons:** `lucide-react-native` exclusively.
+- **Safety Handling:** All native animations/layout transitions must decouple execution inside an explicit frame-deferred window `setTimeout(fn, 16)` to guarantee native tree stability.
+
+## 3. Visual System Specs (Inspired by Maricarmen Vargas Insight)
+- **Aesthetic:** Dreamy, soft, ethereal, and organic. Deep grounding instead of stark clinical white or urgent high-contrast colors.
+- **Color Tokens:**
+  - **Primary Canvas Background:** Jade Green and soft sky-wavy gradients transitioning from deep soothing Jade/Teal (`#115E59` to `#0D9488`) into soft Mint (`#CCFBF1`).
+  - **Accent Components:** Radiant translucent turquoise (`#2DD4BF`) and glowing soft neon mint (`#34D399`) for metrics, custom progress tracking paths, and highlights.
+  - **Cards & Text Overlays:** Clear translucent backdrops (`rgba(255, 255, 255, 0.08)`) with frosted-glass styling over dark teal canvas layers.
+  - **Typography Colors:** Stark crisp White (`#FFFFFF`) or high-contrast silver mint (`#E2F3EE`) for primary labels. Soft sky gray (`#94A3B8`) for secondary metrics and timestamps.
+- **Geometry:** Fluid, organic lines, soft waves, and heavy pill-like rounded radii (`borderRadius: 24` or `32`).
+
+## 4. AI-First Interaction Model
+- **Conversational Concierge:** The chat layout acts as the single operational nexus. The AI queries the user in an inquisitive loop to build out a dynamic JSON "Encyclopedia of You" local memory map.
+- **Dynamic Micro-Widgets:** When the AI delivers an answer or logs behavior, it displays data as interactive frosted-glass card overlays inside the chat stream, complete with soft glowing turquoise action button nodes.
+- **Compassionate Safety Guardrails:** If negative user state indicators are captured ("anxious", "ruined my diet"), all metric visualization widgets drop out completely, forcing an immediate transition into a serene 6-second breathing loop overlay.

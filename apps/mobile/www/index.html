@@ -181,7 +181,7 @@
         <span class="material-symbols-outlined text-accent-teal ml-auto fill1">verified</span>
       </div>
       <div id="settingsList" class="bg-surface-container-lowest rounded-[24px] overflow-hidden editorial-shadow"></div>
-      <p class="text-center font-caption text-text-muted mt-space-6">Qetos · v0.1 · made with care</p>
+      <p class="text-center font-caption text-text-muted mt-space-6">Qetos · v1.0.2 · made with care</p>
     </section>
   </main>
 
@@ -251,6 +251,51 @@
     <div id="settingBody" class="flex-1 overflow-y-auto p-space-6 no-scrollbar"></div>
   </div>
 
+  <!-- ============ SHOPPING LIST · FULL-SCREEN OVERLAY ============ -->
+  <div id="shoppingScreen" class="panel-slide absolute inset-0 z-50 bg-background-base flex flex-col" role="dialog" aria-modal="true" aria-label="Shopping list">
+    <div class="flex items-center gap-space-3 px-space-6 py-space-4 border-b border-outline-variant bg-background-base">
+      <button onclick="closeShopping()" aria-label="Back" class="w-9 h-9 rounded-full bg-surface-container-lowest grid place-items-center text-primary active:scale-95 transition"><span class="material-symbols-outlined">chevron_left</span></button>
+      <h2 class="font-display-lg text-display-lg text-primary flex-1">Shopping list</h2>
+      <span id="shopSyncDot" class="hidden material-symbols-outlined text-accent-teal text-[18px]" title="Live sync on" aria-hidden="true">sensors</span>
+      <button onclick="openShareSheet()" aria-label="Share list" class="w-9 h-9 rounded-full bg-surface-container-lowest grid place-items-center text-primary active:scale-95 transition"><span class="material-symbols-outlined">ios_share</span></button>
+    </div>
+
+    <div class="px-space-6 pt-space-4">
+      <div id="shopSummary" class="flex items-center justify-between"></div>
+    </div>
+
+    <div id="shopBody" class="flex-1 overflow-y-auto px-space-6 pt-space-4 pb-space-6 no-scrollbar space-y-space-2"></div>
+
+    <!-- add-item dock -->
+    <div class="shrink-0 px-space-6 pb-space-6 pt-space-4 bg-gradient-to-t from-background-base via-background-base to-transparent">
+      <div class="flex gap-space-2">
+        <input id="shopInput" type="text" autocomplete="off" placeholder="Add an item…" onkeydown="if(event.key==='Enter'){event.preventDefault();shopAdd();}" class="flex-1 rounded-full bg-surface-container-lowest border border-outline-variant py-space-3 px-space-6 font-body-sm text-primary outline-none focus:ring-2 focus:ring-accent-teal"/>
+        <button onclick="shopAdd()" aria-label="Add item" class="w-12 h-12 rounded-full bg-primary text-white grid place-items-center active:scale-90 transition shrink-0"><span class="material-symbols-outlined">add</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SHOPPING · SHARE SHEET ============ -->
+  <div id="shareSheet" class="hidden absolute inset-0 z-[75] flex items-end justify-center" role="dialog" aria-modal="true" aria-label="Share shopping list">
+    <div onclick="closeShareSheet()" class="absolute inset-0 bg-primary/30" style="backdrop-filter:blur(2px)"></div>
+    <div class="relative w-full max-w-md bg-background-base rounded-t-[28px] p-space-6 pb-space-8 reveal" style="box-shadow:0 -8px 40px rgba(7,24,52,.18)">
+      <div class="w-10 h-1.5 rounded-full bg-outline-variant mx-auto mb-space-4"></div>
+      <div class="flex items-center justify-between mb-space-2">
+        <h3 class="font-display-lg text-display-lg text-primary">Share list</h3>
+        <button onclick="closeShareSheet()" aria-label="Close" class="w-9 h-9 rounded-full bg-surface-container-lowest text-primary grid place-items-center active:scale-95 transition"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <p class="font-caption text-text-muted mb-space-4">Anyone with this link sees the list update live as items are added or checked off.</p>
+
+      <div class="bg-soft-mint rounded-[20px] p-space-4 flex items-center gap-space-3 mb-space-4">
+        <span class="material-symbols-outlined text-primary">link</span>
+        <span id="shareLink" class="flex-1 font-body-sm text-primary truncate">—</span>
+        <button onclick="shopCopyLink()" aria-label="Copy link" class="w-9 h-9 rounded-full bg-accent-teal text-primary grid place-items-center active:scale-90 transition shrink-0"><span class="material-symbols-outlined text-[18px]">content_copy</span></button>
+      </div>
+
+      <button id="shopStopShareBtn" onclick="shopStopShare()" class="hidden w-full py-space-3 rounded-full bg-surface-container-lowest text-primary font-body-sm active:scale-95 transition">Stop sharing</button>
+    </div>
+  </div>
+
   <!-- ============ BREATHING OVERLAY ============ -->
   <div id="breathing" class="overlay-fade absolute inset-0 z-[55] flex flex-col items-center justify-center text-center px-space-8"
        style="background:radial-gradient(120% 90% at 50% 20%, #E8F0EC, #FBF9F6)">
@@ -303,7 +348,7 @@
       <p class="font-caption text-text-muted mb-space-4">What's on hand — your meal-prep goals are built from this.</p>
       <div id="pantryList" class="flex flex-wrap gap-2 mb-space-4"></div>
       <div class="flex gap-space-2">
-        <input id="pantryInput" type="text" placeholder="Add an ingredient…" onkeydown="if(event.key==='Enter'){event.preventDefault();addPantryItem();}" class="flex-1 rounded-full bg-surface-container-lowest border border-outline-variant py-space-3 px-space-5 font-body-sm text-primary outline-none focus:ring-2 focus:ring-accent-teal"/>
+        <input id="pantryInput" type="text" placeholder="Add an ingredient…" onkeydown="if(event.key==='Enter'){event.preventDefault();addPantryItem();}" class="flex-1 rounded-full bg-surface-container-lowest border border-outline-variant py-space-3 px-space-6 font-body-sm text-primary outline-none focus:ring-2 focus:ring-accent-teal"/>
         <button onclick="addPantryItem()" class="w-12 h-12 rounded-full bg-primary text-white grid place-items-center active:scale-90 transition shrink-0"><span class="material-symbols-outlined">add</span></button>
       </div>
     </div>
@@ -350,5 +395,6 @@
 <script src="js/supabase-client.js?v=20260604"></script>
 <script src="js/ai.js?v=20260604"></script>
 <script src="js/app.js?v=20260604"></script>
+<script src="js/shopping.js?v=20260604"></script>
 </body>
 </html>

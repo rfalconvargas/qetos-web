@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ketofy | Authentication</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:wght@500;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Playfair+Display:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#ac915d",
+                        "accent-lavender": "#E3E0F2",
+                        "on-background": "#1b1b1e",
+                        "surface-container": "#efedf0",
+                        "outline-variant": "#c5c6ce",
+                        "on-tertiary": "#ffffff",
+                        "inverse-on-surface": "#f2f0f3",
+                        "on-surface-variant": "#44474d",
+                        "tertiary-fixed": "#ffdea4",
+                        "surface-tint": "#505e7e",
+                        "on-tertiary-fixed-variant": "#584417",
+                        "secondary-container": "#d9e1de",
+                        "inverse-primary": "#b7c6eb",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#fbf8fb",
+                        "surface-container-high": "#eae7ea",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#414846",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#e4e2e5",
+                        "tertiary": "#221600",
+                        "inverse-surface": "#303033",
+                        "on-surface": "#1b1b1e",
+                        "tertiary-fixed-dim": "#e1c28a",
+                        "star-glow": "#F7D070",
+                        "surface-container-highest": "#e4e2e5",
+                        "surface-container-low": "#f5f3f6",
+                        "surface": "#fbf8fb",
+                        "primary-container": "#1e2d4a",
+                        "background-base": "#FBF9F6",
+                        "primary-fixed-dim": "#b7c6eb",
+                        "text-muted": "#5A6E85",
+                        "secondary-fixed": "#dce4e0",
+                        "background": "#fbf8fb",
+                        "tertiary-container": "#3c2a01",
+                        "on-tertiary-fixed": "#261900",
+                        "on-secondary-container": "#5c6461",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#75777e",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#c0c8c5",
+                        "error-container": "#ffdad6",
+                        "accent-teal": "#CBE7E3",
+                        "surface-dim": "#dbd9dc",
+                        "secondary": "#58605d",
+                        "on-secondary-fixed": "#161d1b",
+                        "on-primary-container": "#8695b7",
+                        "accent-orange": "#F5A97E",
+                        "on-primary-fixed-variant": "#384765",
+                        "on-primary-fixed": "#0a1b37",
+                        "primary-fixed": "#d8e2ff",
+                        "primary": "#071834"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "space-3": "12px",
+                        "space-4": "16px",
+                        "space-2": "8px",
+                        "micro": "4px",
+                        "space-6": "24px",
+                        "space-8": "32px"
+                    },
+                    "fontFamily": {
+                        "caption": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Playfair Display"],
+                        "body-base": ["Inter"],
+                        "display-xl": ["Playfair Display"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "caption": ["12px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                        "headline-md": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "display-lg": ["28px", {"lineHeight": "1.2", "fontWeight": "500"}],
+                        "body-base": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "display-xl": ["40px", {"lineHeight": "1.1", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "300"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        body {
+            background-color: #FBF9F6; /* Warm Cream Base */
+            color: #071834; /* Deep Cobalt Base */
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .fade-in {
+            animation: fadeIn 1s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .action-pill {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .action-pill:active {
+            transform: scale(0.96);
+        }
+
+        .blur-bg {
+            backdrop-filter: blur(8px);
+            background-color: rgba(251, 249, 246, 0.8);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-space-6 overflow-hidden">
+<!-- Authentication Overlay Container -->
+<main class="fade-in w-full max-w-md flex flex-col items-center" id="auth-overlay">
+<!-- Header Section -->
+<header class="text-center mb-space-8 flex flex-col items-center">
+<div class="mb-space-6 w-20 h-20 rounded-full overflow-hidden border border-outline-variant bg-surface-container-lowest flex items-center justify-center">
+<img alt="Ketofy App Logo" class="w-16 h-16 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAho9vpjI9JTcB0rTND_2Qz57MASLWU5Rex1uf5EJ4LHq8i-azCJiAln0fpSLufffGT0gz6RtHzDMKvLcB1CmzMmZZDYULvcLxNrW0XNfjXG4DvjdmmgWw4-nqNLwcn97_6JLZzaYUE7jH5XpwmWw4h_zkxvhSO1VXAJgeVD9g5nD8ccXBno7DpvKyL4lbSlvCNeb1_Eobk3vVHm8XxElNoQwUm89yTohyLF1LOsrYg30-Ky8JsaT2iYInS_3eklSTavN1DvBe1lA"/>
+</div>
+<h1 class="font-display-xl text-display-xl text-primary mb-space-2">
+                Welcome to Ketofy.
+            </h1>
+<p class="font-body-base text-body-base text-text-muted tracking-wide">
+                Your protocol awaits.
+            </p>
+</header>
+<!-- Action Stack -->
+<section class="w-full space-y-space-4">
+<!-- Google Auth -->
+<button class="action-pill w-full flex items-center justify-center py-space-4 px-space-6 border border-primary bg-surface-container-lowest rounded-full group">
+<span class="material-symbols-outlined mr-space-3 text-primary" data-icon="google">google</span>
+<span class="font-body-base text-body-base text-primary font-semibold">Continue with Google</span>
+</button>
+<!-- Instagram Auth -->
+<button class="action-pill w-full flex items-center justify-center py-space-4 px-space-6 bg-accent-lavender rounded-full group">
+<span class="material-symbols-outlined mr-space-3 text-primary" data-icon="photo_camera">photo_camera</span>
+<span class="font-body-base text-body-base text-primary font-semibold">Connect with Instagram</span>
+</button>
+<!-- Separator -->
+<div class="flex items-center py-space-4">
+<div class="flex-grow border-t border-outline-variant"></div>
+<span class="px-space-4 font-caption text-caption text-text-muted">OR</span>
+<div class="flex-grow border-t border-outline-variant"></div>
+</div>
+<!-- Email/Phone Input -->
+<div class="space-y-space-3">
+<div class="relative">
+<input class="w-full bg-surface-container-low border-none rounded-full py-space-3 px-space-6 font-body-base text-body-base focus:ring-2 focus:ring-primary-container transition-shadow placeholder:text-outline" placeholder="Email or Phone Number" type="text"/>
+</div>
+<button class="action-pill w-full bg-primary text-on-primary rounded-full py-space-4 px-space-6 font-body-base text-body-base font-semibold transition-colors hover:bg-primary-container" id="magic-link-btn">
+                    Send Magic Link / SMS OTP
+                </button>
+</div>
+</section>
+<!-- Footer Metadata -->
+<footer class="mt-space-8 text-center px-space-6">
+<p class="font-caption text-caption text-text-muted">
+                By continuing, you agree to our <a class="underline decoration-outline-variant" href="#">Terms of Service</a> and <a class="underline decoration-outline-variant" href="#">Privacy Policy</a>. 
+            </p>
+<div class="mt-space-8 flex justify-center space-x-space-2 opacity-40">
+<span class="material-symbols-outlined text-[16px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</footer>
+</main>
+<!-- Background Atmospheric Decor -->
+<div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent-teal/20 rounded-full blur-[100px] -z-10"></div>
+<div class="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-accent-lavender/30 rounded-full blur-[120px] -z-10"></div>
+<script>
+        // Simple micro-interaction for the magic link button
+        const magicBtn = document.getElementById('magic-link-btn');
+        
+        magicBtn.addEventListener('click', () => {
+            const originalText = magicBtn.innerText;
+            magicBtn.innerText = 'Sending...';
+            magicBtn.classList.add('opacity-80');
+            
+            setTimeout(() => {
+                magicBtn.innerHTML = '<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span> Sent';
+                magicBtn.style.backgroundColor = '#E8F0EC';
+                magicBtn.style.color = '#071834';
+                
+                // Simulate transition out after success
+                setTimeout(() => {
+                    document.getElementById('auth-overlay').style.opacity = '0';
+                    document.getElementById('auth-overlay').style.transition = 'opacity 1.5s ease-in-out';
+                    document.getElementById('auth-overlay').style.transform = 'translateY(-20px)';
+                }, 1000);
+            }, 1500);
+        });
+
+        // Interactive background shift
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            document.querySelector('.fixed.top-\\[-10\\%\\]').style.transform = `translate(${x * 20}px, ${y * 20}px)`;
+            document.querySelector('.fixed.bottom-\\[-10\\%\\]').style.transform = `translate(${-x * 30}px, ${-y * 30}px)`;
+        });
+    </script>
+</body></html>

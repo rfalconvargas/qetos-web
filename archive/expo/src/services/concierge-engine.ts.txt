@@ -1,0 +1,44 @@
+import { Platform } from 'react-native';
+
+interface LocalContext {
+  systemTime: string;
+  circadianWindow: 'Morning' | 'Mid-Day' | 'Evening' | 'Night';
+  clinicalPhase: string;
+  userBiometrics: {
+    allergies: string[];
+    digestiveTriggers: string[];
+  };
+}
+
+export function interceptAndHydrateContext(userRawText: string, localDatabaseState: any): string {
+  const currentHour = new Date().getHours();
+  
+  // 1. Deterministic Circadian Window Calculation
+  let window: 'Morning' | 'Mid-Day' | 'Evening' | 'Night' = 'Mid-Day';
+  if (currentHour >= 5 && currentHour < 11) window = 'Morning';
+  else if (currentHour >= 11 && currentHour < 17) window = 'Mid-Day';
+  else if (currentHour >= 17 && currentHour < 22) window = 'Evening';
+  else window = 'Night';
+
+  const contextPayload: LocalContext = {
+    systemTime: new Date().toISOString(),
+    circadianWindow: window,
+    clinicalPhase: localDatabaseState.profile.clinicalPhase || 'THINK',
+    userBiometrics: {
+      allergies: localDatabaseState.profile.allergies || [],
+      digestiveTriggers: localDatabaseState.profile.digestiveTriggers || []
+    }
+  };
+
+  // 2. Synthesize the System-Enforced Prompt Matrix
+  // This completely forces the LLM to act as a data processor, not a typewriter.
+  return `
+    [SYSTEM ENFORCED PROTOCOL CONTEXT]
+    You are the backend data parsing processor for the Mytabolism App. 
+    You must NEVER output prose, conversation, introductory phrases, or markdown. 
+    You must strictly evaluate the raw input text and return a valid JSON object matching the UI schema.
+
+    Current Device Metrics: ${JSON.stringify(contextPayload)}
+    User Input: "${userRawText}"
+  `.trim();
+}

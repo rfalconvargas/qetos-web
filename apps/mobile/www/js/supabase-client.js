@@ -102,6 +102,62 @@ window.DB = (function () {
   async function listShopping() { if (!user) return []; const { data } = await sb.from("shopping_list").select("*").eq("user_id", user.id).order("created_at"); return data || []; }
   async function setShoppingChecked(id, checked) { return sb.from("shopping_list").update({ checked }).eq("id", id); }
 
+  // ---------- SHARED LISTS (collaborative shopping) ----------
+  // Token-based: anyone holding a list's share_token (uuid) can collaborate,
+  // no auth required. These wrap server-side SECURITY DEFINER RPCs — keep the
+  // p_* argument names in sync with the SQL function signatures.
+  async function createSharedList(name, createdBy) {
+    if (!ready()) throw new Error("offline");
+    const { data } = await sb.rpc("create_shared_list", { p_name: name, p_created_by: createdBy });
+    return data; // -> shared_lists row (has .id and .share_token)
+  }
+  async function getSharedList(token) {
+    if (!ready()) throw new Error("offline");
+    const { data } = await sb.rpc("get_shared_list", { p_token: token });
+    return data; // -> jsonb { list, items }
+  }
+  async function addSharedItem(token, item, qty, addedBy) {
+    if (!ready()) throw new Error("offline");
+    const { data } = await sb.rpc("add_shared_item", { p_token: token, p_item: item, p_qty: qty, p_added_by: addedBy });
+    return data; // -> shared_list_items row
+  }
+  async function setSharedChecked(token, itemId, checked) {
+    if (!ready()) throw new Error("offline");
+    return sb.rpc("set_shared_item_checked", { p_token: token, p_item_id: itemId, p_checked: checked });
+  }
+  async function removeSharedItem(token, itemId) {
+    if (!ready()) throw new Error("offline");
+    return sb.rpc("remove_shared_item", { p_token: token, p_item_id: itemId });
+  }
+  async function renameSharedList(token, name) {
+    if (!ready()) throw new Error("offline");
+    return sb.rpc("rename_shared_list", { p_token: token, p_name: name });
+  }
+  async function clearCheckedShared(token) {
+    if (!ready()) throw new Error("offline");
+    return sb.rpc("clear_checked_items", { p_token: token });
+  }
+
+  // Realtime: subscribe to every change on a shared list's items and the list
+  // row itself (e.g. renames). `listId` is shared_lists.id (returned by
+  // getSharedList). onChange(payload) fires per change; payload has
+  // .eventType ("INSERT"|"UPDATE"|"DELETE"), .new, .old and .table.
+  // Returns the channel; pass it back to unsubscribeShared() to tear down.
+  // NOTE: requires the shared_lists / shared_list_items tables to be added to
+  // the `supabase_realtime` publication — not yet enabled as of this writing.
+  function subscribeSharedList(listId, onChange) {
+    if (!ready() || !listId) return null;
+    return sb.channel("shared_list:" + listId)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "shared_list_items", filter: "list_id=eq." + listId },
+        (payload) => onChange(payload))
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "shared_lists", filter: "id=eq." + listId },
+        (payload) => onChange(payload))
+      .subscribe();
+  }
+  function unsubscribeShared(channel) { if (ready() && channel) sb.removeChannel(channel); }
+
   // ---------- CHAT + MEMORY ----------
   async function saveMessage(role, content) { return sb.from("chat_messages").insert({ role, content, user_id: user.id }); }
   async function recentMessages(n = 20) { if (!user) return []; const { data } = await sb.from("chat_messages").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(n); return (data || []).reverse(); }
@@ -120,5 +176,7 @@ window.DB = (function () {
     signInWithProvider, signOut, currentUser, getProfile, upsertProfile, getTargets, saveTargets,
     listSupplements, setSupplements, addMeal, listMealsByDay, addKetone, listKetonesByDay, addWin, listWins, addLabReport, addLabMetrics, saveDaily,
     addShoppingItem, listShopping, setShoppingChecked,
+    createSharedList, getSharedList, addSharedItem, setSharedChecked, removeSharedItem,
+    renameSharedList, clearCheckedShared, subscribeSharedList, unsubscribeShared,
     saveMessage, recentMessages, addMemory, completeOnboarding };
 })();

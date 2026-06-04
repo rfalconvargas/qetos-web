@@ -1,6 +1,6 @@
 {
   "name": "qetos-mobile",
-  "version": "0.1.0",
+  "version": "1.0.2",
   "private": true,
   "description": "Qetos — AI-first metabolic & mental health companion (Capacitor: Android + iOS + Desktop)",
   "scripts": {

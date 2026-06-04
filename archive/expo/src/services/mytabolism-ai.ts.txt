@@ -1,0 +1,62 @@
+import { GoogleGenAI } from '@google/generative-ai';
+
+// Initialize the API Client safely (Ensure your system variable is loaded)
+const ai = new GoogleGenAI({ apiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY });
+
+export interface LocalUserMemory {
+  allergies: string[];
+  digestiveTriggers: string[];
+  favoriteKetogenicFoods: string[];
+  currentMoodState: string;
+}
+
+/**
+ * Executes a structured anti-wrapper conversational memory pipeline with Gemini Flash
+ */
+export async function processConciergeInteractions(
+  userSpeechInput: string,
+  currentMemoryState: LocalUserMemory
+) {
+  try {
+    const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    // The Karpathy Prompt Enforcer System Matrix
+    const promptSystemMatrix = `
+      You are the specialized, inquisitive clinical metabolic psychiatry AI concierge for the Mytabolism mobile application.
+      Your primary purpose is maintaining and updating the "Encyclopedia of You" profile data structure for user Raúl.
+
+      Current Known Local Memory Structure:
+      ${JSON.stringify(currentMemoryState)}
+
+      User Input Entry: "${userSpeechInput}"
+
+      CRITICAL OPERATION INSTRUCTIONS:
+      1. Analyze the user input for specific health triggers, reactions, preferences, or biomarkers.
+      2. You MUST return a strict, minified JSON response block containing exactly two fields: "conversationalResponse" and "updatedMemoryFields". Do not append any markdown code blocks, backticks, or intro texts.
+      3. Keep the "conversationalResponse" string direct, deeply empathetic, and clear. Avoid ambiguous slang or confusing clinical phrasing.
+      4. Populate "updatedMemoryFields" with any newly extracted metrics to commit to local storage.
+
+      Target Return JSON format:
+      {"conversationalResponse": "Clear medical feedback text string here.", "updatedMemoryFields": {"allergies": [], "digestiveTriggers": [], "favoriteKetogenicFoods": [], "currentMoodState": ""}}
+    `;
+
+    const responseResult = await model.generateContent(promptSystemMatrix);
+    const rawCleanTextResult = responseResult.response.text().trim();
+
+    // Parse the machine-readable output safely
+    const parsedDataPayload = JSON.parse(rawCleanTextResult);
+    
+    return {
+      success: true,
+      text: parsedDataPayload.conversationalResponse,
+      memoryUpdates: parsedDataPayload.updatedMemoryFields
+    };
+  } catch (error) {
+    console.error("Concierge Pipeline Failure:", error);
+    return {
+      success: false,
+      text: "I encountered a minor loop connection shift. Let's ground your system manually.",
+      memoryUpdates: {}
+    };
+  }
+}

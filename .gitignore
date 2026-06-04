@@ -1,10 +1,18 @@
+# Dependencies
 node_modules/
-android/
-ios/
-electron/
-.DS_Store
-*.log
-.env
-.env.local
+
+# Build / tooling caches
 dist/
-www/**/*.map
+build/
+.expo/
+.next/
+.turbo/
+*.log
+
+# Env / secrets
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db

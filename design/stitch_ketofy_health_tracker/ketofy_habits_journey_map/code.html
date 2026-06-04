@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<title>Ketofy - Habits Journey</title>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "on-tertiary-container": "#ac915d",
+                  "accent-lavender": "#E3E0F2",
+                  "on-background": "#1b1b1e",
+                  "surface-container": "#efedf0",
+                  "outline-variant": "#c5c6ce",
+                  "on-tertiary": "#ffffff",
+                  "inverse-on-surface": "#f2f0f3",
+                  "on-surface-variant": "#44474d",
+                  "tertiary-fixed": "#ffdea4",
+                  "surface-tint": "#505e7e",
+                  "on-tertiary-fixed-variant": "#584417",
+                  "secondary-container": "#d9e1de",
+                  "inverse-primary": "#b7c6eb",
+                  "error": "#ba1a1a",
+                  "surface-bright": "#fbf8fb",
+                  "surface-container-high": "#eae7ea",
+                  "on-error": "#ffffff",
+                  "on-primary": "#ffffff",
+                  "on-secondary-fixed-variant": "#414846",
+                  "on-secondary": "#ffffff",
+                  "surface-variant": "#e4e2e5",
+                  "tertiary": "#221600",
+                  "inverse-surface": "#303033",
+                  "on-surface": "#1b1b1e",
+                  "tertiary-fixed-dim": "#e1c28a",
+                  "star-glow": "#F7D070",
+                  "surface-container-highest": "#e4e2e5",
+                  "surface-container-low": "#f5f3f6",
+                  "surface": "#fbf8fb",
+                  "primary-container": "#1e2d4a",
+                  "background-base": "#FBF9F6",
+                  "primary-fixed-dim": "#b7c6eb",
+                  "text-muted": "#5A6E85",
+                  "secondary-fixed": "#dce4e0",
+                  "background": "#fbf8fb",
+                  "tertiary-container": "#3c2a01",
+                  "on-tertiary-fixed": "#261900",
+                  "on-secondary-container": "#5c6461",
+                  "surface-container-lowest": "#ffffff",
+                  "outline": "#75777e",
+                  "on-error-container": "#93000a",
+                  "secondary-fixed-dim": "#c0c8c5",
+                  "error-container": "#ffdad6",
+                  "accent-teal": "#CBE7E3",
+                  "surface-dim": "#dbd9dc",
+                  "secondary": "#58605d",
+                  "on-secondary-fixed": "#161d1b",
+                  "on-primary-container": "#8695b7",
+                  "accent-orange": "#F5A97E",
+                  "on-primary-fixed-variant": "#384765",
+                  "on-primary-fixed": "#0a1b37",
+                  "primary-fixed": "#d8e2ff",
+                  "primary": "#071834"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "space-3": "12px",
+                  "space-4": "16px",
+                  "space-2": "8px",
+                  "micro": "4px",
+                  "space-6": "24px",
+                  "space-8": "32px"
+          },
+          "fontFamily": {
+                  "caption": ["Inter"],
+                  "headline-md": ["Inter"],
+                  "display-lg": ["Playfair Display"],
+                  "body-base": ["Inter"],
+                  "display-xl": ["Playfair Display"],
+                  "body-sm": ["Inter"]
+          },
+          "fontSize": {
+                  "caption": ["12px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                  "headline-md": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                  "display-lg": ["28px", {"lineHeight": "1.2", "fontWeight": "500"}],
+                  "body-base": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                  "display-xl": ["40px", {"lineHeight": "1.1", "fontWeight": "700"}],
+                  "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "300"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      background-color: #FBF9F6;
+      color: #071834;
+      overflow-x: hidden;
+    }
+    .journey-path {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, #CBE7E3 0%, #8695b7 50%, #CBE7E3 100%);
+      transform: translateX(-50%);
+      z-index: 0;
+    }
+    .journey-step {
+      position: relative;
+      z-index: 10;
+    }
+    .leaf-marker {
+      font-variation-settings: 'FILL' 1;
+      color: #58605d;
+    }
+    .star-glow-effect {
+      box-shadow: 0 0 15px #F7D070;
+      background-color: #F7D070;
+    }
+    .floating {
+      animation: floating 3s ease-in-out infinite;
+    }
+    @keyframes floating {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+      100% { transform: translateY(0px); }
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-base text-body-base">
+<!-- TopAppBar -->
+<header class="w-full top-0 flex justify-between items-center w-full px-space-8 pt-space-4 bg-background dark:bg-background">
+<div class="flex items-center gap-space-2">
+<div class="w-10 h-10 rounded-full bg-accent-lavender flex items-center justify-center overflow-hidden">
+<img alt="User profile photo" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGrTYXOO1HzMaSHT_OTU_F2sE0g72_LsKjK92gFUr6pfuUQOAvsO6FG6W9Y9y_SGU1UlL70djrpzhj7y9_TC1VOLKJ2nXu0MG-FKoerQH7Iaz24rJu60An4Jj4G5gedZMStVHfDYY9Eo0YQ1QDLxTig9fhwWZ4yzUumgIP4qt4KI5MbpfnBk50Y2lWWv-zOQQCq7NM2KqHvNxT_vyIfvZZtkRE52wkqFF1jl9aj1-dhhqAf7kp9FCBkDDfAJRkoXPXI5ZjFYsMnA"/>
+</div>
+</div>
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary-fixed">Ketofy</h1>
+<button class="material-symbols-outlined text-primary dark:text-primary-fixed hover:opacity-80 transition-opacity scale-95 transition-transform duration-200" data-icon="settings">settings</button>
+</header>
+<main class="relative px-space-8 py-space-6 pb-32">
+<!-- Hero Section -->
+<section class="mb-space-8">
+<p class="font-caption text-caption text-text-muted uppercase tracking-widest mb-space-2">DRESS Protocol</p>
+<h2 class="font-display-lg text-display-lg text-primary mb-space-4">Your Daily Flow</h2>
+<p class="text-text-muted max-w-xs">A compassionate journey through metabolic and mental harmony.</p>
+</section>
+<!-- Journey Map -->
+<div class="relative mt-space-8">
+<!-- Continuous Path Line -->
+<div class="journey-path"></div>
+<!-- Breakfast Phase -->
+<div class="journey-step mb-space-8">
+<div class="flex items-center gap-space-4 mb-space-6">
+<div class="w-12 h-12 rounded-full bg-accent-teal flex items-center justify-center journey-marker star-glow-effect">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">Breakfast</h3>
+<p class="font-caption text-caption text-text-muted">Awakening the metabolism</p>
+</div>
+</div>
+<div class="space-y-space-4">
+<!-- Habit Card 1 -->
+<div class="ml-space-8 bg-[#E8F0EC] p-space-6 rounded-[24px] border-none transition-transform hover:scale-[1.02] duration-300">
+<div class="flex justify-between items-start mb-space-3">
+<span class="material-symbols-outlined text-star-glow" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-caption text-caption text-secondary">COMPLETE</span>
+</div>
+<h4 class="font-headline-md text-headline-md mb-micro">Hydration Foundation</h4>
+<p class="font-body-sm text-body-sm text-text-muted">500ml of room temperature water with a pinch of sea salt.</p>
+</div>
+<!-- Habit Card 2 -->
+<div class="ml-space-8 bg-[#E8F0EC] p-space-6 rounded-[24px] border-none">
+<div class="flex justify-between items-start mb-space-3">
+<span class="material-symbols-outlined text-outline">circle</span>
+<span class="font-caption text-caption text-text-muted">PENDING</span>
+</div>
+<h4 class="font-headline-md text-headline-md mb-micro">The Keto Starter</h4>
+<p class="font-body-sm text-body-sm text-text-muted">High-fat, moderate protein fuel to sustain mental clarity.</p>
+<button class="mt-space-4 w-full py-space-3 bg-primary text-background-base rounded-full text-caption font-semibold tracking-wide scale-95 transition-transform active:scale-90">MARK AS DONE</button>
+</div>
+</div>
+</div>
+<!-- Mid-Journey Illustration -->
+<div class="journey-step py-space-8 flex justify-center">
+<div class="w-48 h-48 rounded-full overflow-hidden border-4 border-accent-teal floating">
+<img class="w-full h-full object-cover" data-alt="A serene, high-quality photograph of a single green leaf resting on a calm water surface, creating gentle ripples. The lighting is soft and ethereal, using a warm cream and soft mint color palette to evoke a sense of peace and metabolic balance. The aesthetic is clean, minimalist, and editorial, reflecting a premium wellness brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDVjwFl0SnFVKRREhjkzlStzovOYC0Q-U6Erqf1Vi-tZlGWgdYyDdtQ_4VeaRoyXNzMHBGmdH4Qo4FJPmk68kaJkEAFbrbPYFKOBjUrr5Ix7IuWcmL4mGFfSXbUNii9xqf5wA9Rj95YemSznCFIpqVX-BjoZG4LM9EL3wizqQ44eXSFDeUCb6WYCtTPtYDEKE5I68JBEzNvVKGFyOlXaTeSWE8K1EmXCT7cyl_9dvniNHFASSB_Mul2mCxL05X2hJp53_JWopmnA"/>
+</div>
+</div>
+<!-- Afternoon Phase -->
+<div class="journey-step mb-space-8">
+<div class="flex items-center gap-space-4 mb-space-6 flex-row-reverse text-right">
+<div class="w-12 h-12 rounded-full bg-accent-lavender flex items-center justify-center journey-marker">
+<span class="material-symbols-outlined text-primary">light_mode</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">Afternoon</h3>
+<p class="font-caption text-caption text-text-muted">Maintaining steady energy</p>
+</div>
+</div>
+<div class="space-y-space-4">
+<div class="mr-space-8 bg-[#E8F0EC] p-space-6 rounded-[24px] border-none">
+<div class="flex justify-between items-start mb-space-3">
+<span class="material-symbols-outlined text-outline">circle</span>
+<span class="font-caption text-caption text-text-muted">NEXT UP</span>
+</div>
+<h4 class="font-headline-md text-headline-md mb-micro">Solar Exposure</h4>
+<p class="font-body-sm text-body-sm text-text-muted">10 minutes of direct sunlight to anchor your circadian rhythm.</p>
+</div>
+</div>
+</div>
+<!-- Evening Wind-Down Phase -->
+<div class="journey-step">
+<div class="flex items-center gap-space-4 mb-space-6">
+<div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center journey-marker">
+<span class="material-symbols-outlined text-background-base">dark_mode</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">Evening Wind-Down</h3>
+<p class="font-caption text-caption text-text-muted">Restoration and repair</p>
+</div>
+</div>
+<div class="ml-space-8 bg-[#E8F0EC] p-space-6 rounded-[24px] border-none opacity-60">
+<div class="flex justify-between items-start mb-space-3">
+<span class="material-symbols-outlined text-outline">lock</span>
+</div>
+<h4 class="font-headline-md text-headline-md mb-micro">Blue Light Shield</h4>
+<p class="font-body-sm text-body-sm text-text-muted">Disengage from digital screens 60 minutes before rest.</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-space-4 pb-space-6 pt-space-2 bg-surface-container-lowest dark:bg-surface-container-low rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-text-muted dark:text-outline px-space-4 py-space-2 hover:bg-secondary-container transition-colors scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-caption text-caption">CHAT</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-muted dark:text-outline px-space-4 py-space-2 hover:bg-secondary-container transition-colors scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="photo_camera">photo_camera</span>
+<span class="font-caption text-caption">LOG</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-accent-teal dark:bg-primary-container text-primary dark:text-on-primary-container rounded-full px-space-4 py-space-2 scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-caption text-caption">HABITS</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-muted dark:text-outline px-space-4 py-space-2 hover:bg-secondary-container transition-colors scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+<span class="font-caption text-caption">MORE</span>
+</a>
+</nav>
+<script>
+    // Micro-interaction for journey markers
+    document.querySelectorAll('.journey-marker').forEach(marker => {
+      marker.addEventListener('click', function() {
+        this.classList.toggle('star-glow-effect');
+        const icon = this.querySelector('.material-symbols-outlined');
+        if (this.classList.contains('star-glow-effect')) {
+          icon.style.fontVariationSettings = "'FILL' 1";
+        } else {
+          icon.style.fontVariationSettings = "'FILL' 0";
+        }
+      });
+    });
+
+    // Subtle parallax on scroll for path
+    window.addEventListener('scroll', () => {
+      const scrollPos = window.scrollY;
+      const path = document.querySelector('.journey-path');
+      path.style.opacity = 1 - (scrollPos / 2000);
+    });
+  </script>
+</body></html>
