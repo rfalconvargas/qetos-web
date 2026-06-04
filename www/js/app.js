@@ -313,7 +313,11 @@ function renderVision(mode, r){
       <div class="flex items-center gap-2 font-caption text-text-muted uppercase tracking-widest mb-space-4"><span class="material-symbols-outlined text-[16px]">eco</span> Meal · recognized</div>
       <div class="flex items-center justify-between gap-2 mb-space-4"><h4 class="font-display-lg text-display-lg text-primary">${esc(r.name||"Meal")}</h4>${impactBadge(r.cholesterol_impact)}</div>
       <div class="grid grid-cols-3 gap-space-2 text-center mb-space-4">${stat(Math.round(r.kcal||0),"kcal")}${stat((r.net_carbs_g??0)+"g","net carbs")}${stat((r.protein_g??0)+"g","protein")}</div>
-      <p class="font-body-sm text-text-muted mb-space-4">${esc(r.note||"")}</p>${discussRow()}</div>`;
+      ${(()=>{ const items = mealItemsList(r.ingredients);
+        return items
+          ? `<p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">Ingredients</p>${items}${r.note?`<p class="font-caption text-text-muted italic mb-space-4">${esc(r.note)}</p>`:""}`
+          : `<p class="font-body-sm text-text-muted mb-space-4">${esc(r.note||"")}</p>`; })()}
+      ${discussRow()}</div>`;
   }
   if(mode==="ketone"){
     const val = (r.bhb_mmol!=null) ? r.bhb_mmol+" <span class='font-body-sm text-text-muted'>mmol BHB</span>" : (r.glucose_mgdl!=null) ? r.glucose_mgdl+" <span class='font-body-sm text-text-muted'>mg/dL</span>" : "—";
@@ -340,6 +344,54 @@ function ketoneFallbackCard(){
 }
 function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 
+// Pick a contextual food emoji from an ingredient name (first keyword match wins).
+function foodEmoji(name){
+  const s = String(name||"").toLowerCase();
+  const map = [
+    [/coffee|espresso|latte|americano/, "☕"],
+    [/cream|milk|yogurt|yoghurt|kefir/, "🥛"],
+    [/ribeye|steak|beef|burger|brisket|meatball/, "🥩"],
+    [/bacon|pork|ham|sausage|chorizo/, "🥓"],
+    [/chicken|poultry|turkey|thigh|wing/, "🍗"],
+    [/salmon|tuna|fish|sardine|mackerel|cod|anchov/, "🐟"],
+    [/shrimp|prawn|crab|lobster|shellfish|scallop/, "🦐"],
+    [/egg/, "🥚"],
+    [/avocado|guac/, "🥑"],
+    [/cheese|parmesan|cheddar|feta|mozzarella|brie/, "🧀"],
+    [/butter|ghee/, "🧈"],
+    [/olive|oil|dressing|vinaigrette/, "🫒"],
+    [/almond|walnut|pecan|macadamia|cashew|pistachio|\bnut|seed/, "🥜"],
+    [/spinach|kale|lettuce|salad|greens|arugula|chard/, "🥬"],
+    [/broccoli|cauliflower|sprout/, "🥦"],
+    [/tomato/, "🍅"],
+    [/cucumber|zucchini|courgette|pickle/, "🥒"],
+    [/pepper|capsicum|chili|chilli|jalapeno/, "🌶️"],
+    [/mushroom/, "🍄"],
+    [/onion|garlic|shallot|leek/, "🧅"],
+    [/berr|strawberr|blueberr|raspberr/, "🫐"],
+    [/coconut/, "🥥"],
+    [/lemon|lime/, "🍋"],
+    [/rice|bread|pasta|potato|toast|bun|tortilla|oat|noodle/, "🍚"],
+  ];
+  for (const [re, emo] of map) { if (re.test(s)) return emo; }
+  return "🍽️";
+}
+
+// Render AI-estimated ingredients as a scannable, emoji-led bulleted list.
+// Returns "" when there are no structured ingredients (caller falls back to note).
+function mealItemsList(items){
+  if (!Array.isArray(items) || !items.length) return "";
+  return `<ul class="space-y-space-2 mb-space-4">${items.map(x => {
+    const item = esc(x && (x.item ?? x.name) || "");
+    const qty = esc(x && (x.qty ?? x.quantity) || "");
+    if (!item) return "";
+    return `<li class="flex items-center gap-space-3">
+      <span class="text-[20px] leading-none shrink-0" aria-hidden="true">${foodEmoji(item)}</span>
+      <span class="flex-1 min-w-0 font-body-base text-primary">${item}</span>
+      ${qty ? `<span class="font-body-sm text-text-muted shrink-0">${qty}</span>` : ""}</li>`;
+  }).join("")}</ul>`;
+}
+
 async function persistVision(mode, r){
   if(!DB.ready() || !DB.currentUser()) return;
   if(mode==="food") await DB.addMeal({ name:r.name, kcal:r.kcal, net_carbs_g:r.net_carbs_g, protein_g:r.protein_g, fat_g:r.fat_g, fiber_g:r.fiber_g, cholesterol_impact:r.cholesterol_impact, source:"photo", raw_json:r });
@@ -358,12 +410,19 @@ function discussVision(){
 }
 
 function foodCard(){
+  const demo = [
+    { item: "Grass-fed ribeye", qty: "170 g" },
+    { item: "Avocado", qty: "1/2" },
+    { item: "Olive oil", qty: "1 tbsp" },
+    { item: "Mixed greens", qty: "1 cup" },
+  ];
   return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal">
     <div class="flex items-center gap-2 font-caption text-text-muted uppercase tracking-widest mb-space-4"><span class="material-symbols-outlined text-[16px]">eco</span> Meal · recognized</div>
     <h4 class="font-display-lg text-display-lg text-primary mb-space-4">Grass-fed ribeye &amp; avocado</h4>
     <div class="grid grid-cols-3 gap-space-2 text-center mb-space-4">
       ${stat("620","kcal")}${stat("4g","net carbs")}${stat("52g","protein")}</div>
-    <p class="font-body-sm text-text-muted mb-space-4">Deeply ketogenic and protein-forward — a strong choice for stable afternoon energy.</p>
+    <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">Ingredients</p>${mealItemsList(demo)}
+    <p class="font-caption text-text-muted italic mb-space-4">Deeply ketogenic and protein-forward — a strong choice for stable afternoon energy.</p>
     ${sentRow("meal")}</div>`;
 }
 function medicalCard(){

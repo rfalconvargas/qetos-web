@@ -11,17 +11,21 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash";
 
 const PROMPTS: Record<string, string> = {
-  food: "Identify the food/meal in this image and estimate nutrition for the visible portion. Set cholesterol_impact to one of: raises_ldl, neutral, lowers_ldl (based on saturated/trans fat vs fiber/omega-3/unsaturated fat). Be realistic and state assumptions briefly in 'note'.",
+  food: "Identify the food/meal in this image and estimate nutrition for the visible portion. Break the meal into its distinct components as 'ingredients': for each, give a short 'item' name and an estimated 'qty' — a concise human-readable amount with units for the visible portion (e.g. '170 g', '1/2', '2 slices', '1 cup', '1 tbsp'). The ingredient quantities MUST reflect the same visible portion your macro totals are based on. Set cholesterol_impact to one of: raises_ldl, neutral, lowers_ldl (based on saturated/trans fat vs fiber/omega-3/unsaturated fat). Be realistic and state assumptions briefly in 'note'.",
   ketone: "This is a Keto-Mojo or similar blood meter screen. Read the large displayed number and its unit. If the unit is mmol/L it is a blood ketone reading (set bhb_mmol, leave glucose_mgdl null). If mg/dL it is glucose (set glucose_mgdl, leave bhb_mmol null). Give one calm sentence interpreting it in 'note'. If unreadable, say so in 'note'.",
   document: "This is a medical lab report or a practitioner health plan (image or PDF). Extract faithful, structured content: observations (key findings), actions (recommended steps), pending_labs (future/ordered tests), and metrics (numeric labs as metric/value/unit/flag where flag is optimal|watch|high|low). Do NOT invent numbers; only include what is present. Title = the report's title or 'Health Report'.",
 };
 
 const SCHEMAS: Record<string, unknown> = {
   food: { type: "object", properties: {
-    name: { type: "string" }, kcal: { type: "number" }, net_carbs_g: { type: "number" },
+    name: { type: "string" },
+    ingredients: { type: "array", items: { type: "object", properties: {
+      item: { type: "string" }, qty: { type: "string" },
+    }, required: ["item", "qty"] } },
+    kcal: { type: "number" }, net_carbs_g: { type: "number" },
     protein_g: { type: "number" }, fat_g: { type: "number" }, fiber_g: { type: "number" },
     cholesterol_impact: { type: "string" }, note: { type: "string" },
-  }, required: ["name", "kcal", "net_carbs_g", "protein_g", "fat_g", "note"] },
+  }, required: ["name", "ingredients", "kcal", "net_carbs_g", "protein_g", "fat_g", "note"] },
   ketone: { type: "object", properties: {
     bhb_mmol: { type: "number", nullable: true }, glucose_mgdl: { type: "number", nullable: true },
     reading_type: { type: "string" }, note: { type: "string" },
