@@ -626,12 +626,90 @@ const GOAL_FOODS = ["Wild salmon","Avocado","Olive oil","Sardines","Almonds","Wa
 const RECIPE_IDEAS = ["Baked salmon and avocado salad","Mediterranean keto bowl","Olive-oil braised greens","Sardine and egg plate"];
 state.meal = []; state.shopping = [];
 
+/* ---------- manual text meal -> estimated macros (editable) ---------- */
+async function estimateMeal(){
+  const ta = $("mealText"); const text = (ta && ta.value || "").trim();
+  if(!text){ toast("Describe what you ate first"); ta && ta.focus(); return; }
+  const out = $("mealEstimateOut"); out.classList.remove("hidden");
+  out.innerHTML = `<div class="bg-surface-container-lowest rounded-[24px] p-space-8 text-center reveal"><div class="w-10 h-10 mx-auto rounded-full border-2 border-soft-mint border-t-accent-orange animate-spin"></div><p class="font-body-sm text-text-muted mt-space-3">Estimating macros…</p></div>`;
+  try {
+    const { result } = await Estimate.estimate(text, ctx());
+    if(!result) throw new Error("no result");
+    result.name = result.name || text;
+    state.lastEstimate = result;
+    renderMealEstimateView();
+    out.scrollIntoView({ behavior:"smooth", block:"center" });
+  } catch(e){
+    console.warn("estimate failed, manual entry:", e);
+    // Graceful fallback: open the editable form with blank macros so the user
+    // can still log manually (the whole point for manual-tracking users).
+    state.lastEstimate = { name:text, kcal:0, net_carbs_g:0, protein_g:0, ingredients:[], note:"Couldn't auto-estimate — enter your macros below." };
+    $("mealEstimateOut").innerHTML = renderMealEstimate(state.lastEstimate, true);
+  }
+}
+
+function macroInput(label,id,val){
+  return `<label class="block"><span class="block font-caption text-text-muted uppercase tracking-widest mb-1 text-center">${label}</span>
+    <input id="${id}" type="number" inputmode="decimal" step="any" min="0" value="${val}" class="w-full text-center rounded-[16px] bg-soft-mint border border-outline-variant py-space-3 font-display-lg text-primary focus:ring-2 focus:ring-accent-teal outline-none"/></label>`;
+}
+
+function renderMealEstimate(r, editing){
+  const items = mealItemsList(r.ingredients);
+  const macros = editing
+    ? `<div class="grid grid-cols-3 gap-space-2 mb-space-4">
+        ${macroInput("kcal","mealKcal",Math.round(r.kcal||0))}${macroInput("net carbs g","mealCarb",r.net_carbs_g??0)}${macroInput("protein g","mealProt",r.protein_g??0)}
+       </div>
+       <div class="flex gap-space-2 mb-space-4">
+        <button onclick="applyMealMacros()" class="flex-1 py-space-3 rounded-full bg-primary text-white font-body-sm active:scale-95 transition">Done</button>
+        <button onclick="renderMealEstimateView()" class="py-space-3 px-space-5 rounded-full bg-soft-mint text-primary font-body-sm active:scale-95 transition">Cancel</button>
+       </div>`
+    : `<div class="grid grid-cols-3 gap-space-2 text-center mb-space-3">${stat(Math.round(r.kcal||0),"kcal")}${stat((r.net_carbs_g??0)+"g","net carbs")}${stat((r.protein_g??0)+"g","protein")}</div>
+       <button onclick="editMealMacros()" class="w-full py-space-3 rounded-full bg-soft-mint text-primary font-body-sm active:scale-95 transition inline-flex items-center justify-center gap-2 mb-space-4"><span class="material-symbols-outlined text-[18px]">tune</span> Edit macros</button>`;
+  return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal">
+    <div class="flex items-center gap-2 font-caption text-text-muted uppercase tracking-widest mb-space-4"><span class="material-symbols-outlined text-[16px]">eco</span> Meal · estimated${r.edited?' · edited':''}</div>
+    <h4 class="font-display-lg text-display-lg text-primary mb-space-4">${esc(r.name||"Your meal")}</h4>
+    ${macros}
+    ${items?`<p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">Ingredients</p>${items}`:""}
+    ${r.note?`<p class="font-caption text-text-muted italic mb-space-4">${esc(r.note)}</p>`:""}
+    <button onclick="logEstimatedMeal()" class="w-full py-space-4 rounded-full bg-primary text-white font-body-base active:scale-95 transition">Log this meal</button>
+  </div>`;
+}
+function renderMealEstimateView(){ if(state.lastEstimate) $("mealEstimateOut").innerHTML = renderMealEstimate(state.lastEstimate, false); }
+function editMealMacros(){ if(state.lastEstimate) $("mealEstimateOut").innerHTML = renderMealEstimate(state.lastEstimate, true); }
+function applyMealMacros(){
+  const r = state.lastEstimate; if(!r) return;
+  const k = parseFloat($("mealKcal").value), c = parseFloat($("mealCarb").value), p = parseFloat($("mealProt").value);
+  if(Number.isFinite(k) && k>=0) r.kcal = k;
+  if(Number.isFinite(c) && c>=0) r.net_carbs_g = c;
+  if(Number.isFinite(p) && p>=0) r.protein_g = p;
+  r.edited = true;
+  renderMealEstimateView(); toast("Macros updated");
+}
+async function logEstimatedMeal(){
+  const r = state.lastEstimate; if(!r) return;
+  if(DB.ready() && DB.currentUser()){
+    try { await DB.addMeal({ name:r.name, kcal:r.kcal, net_carbs_g:r.net_carbs_g, protein_g:r.protein_g, fat_g:r.fat_g, fiber_g:r.fiber_g, cholesterol_impact:r.cholesterol_impact, source:"text", raw_json:r }); }
+    catch(e){ console.warn("log meal:", e); }
+  }
+  haptic(); toast("Meal logged");
+  const ta=$("mealText"); if(ta) ta.value="";
+  const out=$("mealEstimateOut"); if(out){ out.classList.add("hidden"); out.innerHTML=""; }
+  state.lastEstimate=null;
+}
+
 function renderFood(){
   $("foodBody").innerHTML = `
     <section class="mb-space-6">
       <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">Nutrition</p>
       <h2 class="font-display-lg text-display-lg text-primary mb-space-2">Recipes</h2>
       <p class="font-body-sm text-text-muted">Tuned to your goals — gentler on LDL, steady ketosis.</p>
+    </section>
+    <section class="mb-space-6">
+      <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">Log what you ate</p>
+      <p class="font-body-sm text-text-muted mb-space-3">No photo? Type the foods and rough amounts — we'll estimate the macros, and you can fine-tune them.</p>
+      <textarea id="mealText" rows="3" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();estimateMeal();}" placeholder="e.g. 2 chicken thighs, 1 zucchini, 1/2 avocado" class="w-full rounded-[20px] bg-white border border-outline-variant p-space-4 font-body-sm text-primary outline-none focus:ring-2 focus:ring-accent-teal editorial-shadow placeholder:text-text-muted"></textarea>
+      <button onclick="estimateMeal()" class="w-full mt-space-3 py-space-4 rounded-full bg-primary text-white font-body-base active:scale-95 transition inline-flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[20px]">calculate</span> Estimate macros</button>
+      <div id="mealEstimateOut" class="hidden mt-space-4"></div>
     </section>
     <section class="mb-space-6">
       <p class="font-caption text-text-muted uppercase tracking-widest mb-space-3">For your goals</p>

@@ -166,6 +166,16 @@ window.Foods = {
   },
 };
 
+/* Text meal -> estimated macros (no photo). Returns { result: {...food shape} } */
+window.Estimate = {
+  endpoint: "https://efkantatoxcpcteqthfh.supabase.co/functions/v1/estimate",
+  async estimate(text, context) {
+    const res = await fetch(this.endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, context }) });
+    if (!res.ok) throw new Error("estimate " + res.status);
+    return res.json();   // { result }
+  },
+};
+
 /* AI step-by-step recipes (Gemini via edge function) */
 window.Recipes = {
   endpoint: "https://efkantatoxcpcteqthfh.supabase.co/functions/v1/recipe",
