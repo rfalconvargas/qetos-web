@@ -131,8 +131,19 @@ window.Concierge = (function () {
     },
     // Proactive, time-aware check-in (Phase 5 daily loop). The model speaks first.
     async proactive(context, part) {
-      const directive = `Please open our conversation for the ${part}: greet me warmly by name, show genuine curiosity about how I'm doing, and ask me ONE grounded check-in question (about my sleep, energy, today's plan, ketones, or how I'm feeling). Keep it to two short, calm sentences.`;
+      const w = context && context.whoop;
+      // When WHOOP recovery/sleep telemetry exists, do NOT ask subjective sleep
+      // questions — the data is already in context. Reflect it and look forward.
+      const directive = w
+        ? `Open our conversation for the ${part}. You ALREADY have my objective WHOOP data: recovery ${w.recovery}%, sleep ${w.sleep_hours}h (${w.sleep_performance}% sleep performance), HRV ${w.hrv}ms, resting HR ${w.rhr}. Do NOT ask whether I slept well or how I slept — you can see it. Greet me by name, reflect what the telemetry shows in one calm sentence, then ask ONE forward-looking question (today's plan, nutrition, or what to focus my energy on). Two short sentences.`
+        : `Please open our conversation for the ${part}: greet me warmly by name, show genuine curiosity about how I'm doing, and ask me ONE grounded check-in question (about my sleep, energy, today's plan, ketones, or how I'm feeling). Keep it to two short, calm sentences.`;
       if (isLive()) { try { return await askLive(directive, context); } catch (e) { console.warn(e); } }
+      // Demo fallback (no key): data-aware greetings that skip the redundant sleep question.
+      if (w) {
+        if (part === "morning") return `Good morning, Raul. WHOOP has you at ${w.recovery}% recovery on ${w.sleep_hours}h of sleep — a solid base. What's the one thing you'd like today's energy to go toward?`;
+        if (part === "evening") return `Evening, Raul. With ${w.recovery}% recovery behind today, how did your energy actually land — and any wins worth noting?`;
+        return `Hi Raul — I'm reading ${w.recovery}% recovery from WHOOP. How are you feeling against that, and what would you like to log together?`;
+      }
       if (part === "morning") return "Good morning, Raul. Before the day gathers speed — how did you sleep, and how's your energy as you wake?";
       if (part === "evening") return "Evening, Raul. As today winds down — how did your energy land, and were there any wins today, even small ones?";
       return "Hi Raul — I've been thinking about your day. How are you feeling right now, and is there anything you'd like to log together?";

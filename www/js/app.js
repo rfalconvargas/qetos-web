@@ -168,7 +168,7 @@ function switchView(view){
   active.classList.add("bg-accent-teal","text-primary"); active.classList.remove("text-text-muted");
   const ai = active.querySelector(".material-symbols-outlined"); if(ai) ai.style.fontVariationSettings = "'FILL' 1";
   $("chatDock").style.display = (view === "chat") ? "block" : "none";
-  if (view === "chat") scrollChat();
+  if (view === "chat") { scrollChat(); renderWhoopCard(); }
   if (view === "plan") { renderPlanHeader(); loadPlanDay(); }
 }
 
@@ -214,7 +214,7 @@ function handleSend(){
   sayFrom(Concierge.ask(text, ctx()));
 }
 function followUp(answer){ appendChat(userBubble(answer)); sayFrom(Concierge.followUp(answer, ctx()), 700); }
-function ctx(){ return { name: state.firstName, energy: state.energy, cravingWins: state.cravingWins, habitWins: state.habitWins, connections: state.connections }; }
+function ctx(){ return { name: state.firstName, whoop: whoopData(), cravingWins: state.cravingWins, habitWins: state.habitWins, connections: state.connections }; }
 
 function quickAction(type){
   if(type === "next"){
@@ -232,11 +232,12 @@ function quickAction(type){
 }
 
 function logEnergyWin(){
+  const bar=$("energyBar"), val=$("energyVal");
   state.energy = Math.min(99, state.energy + 2);
-  $("energyBar").style.width = state.energy + "%"; $("energyVal").textContent = state.energy;
-  addOrb(); saveState(); toast("Energy win logged · +2 stability");
-  if(state.view === "chat"){ sayFrom(Promise.resolve(`Noted, and I can see it in your trend — <b>${state.energy}%</b>. Naming a win tells your brain the strategy worked, which makes it easier to repeat. Quietly proud of you.`), 600); }
-  else { switchView("chat"); setTimeout(() => sayFrom(Promise.resolve(`Energy win logged — you're at <b>${state.energy}%</b>. 🌿`), 400), 300); }
+  if(bar) bar.style.width = state.energy + "%"; if(val) val.textContent = state.energy;
+  addOrb(); saveState(); toast("Win logged");
+  if(state.view === "chat"){ sayFrom(Promise.resolve(`Noted. Naming a win tells your brain the strategy worked, which makes it easier to repeat — quietly proud of you.`), 600); }
+  else { switchView("chat"); setTimeout(() => sayFrom(Promise.resolve(`Win logged. 🌿`), 400), 300); }
 }
 
 /* mic */
@@ -391,7 +392,21 @@ async function loadPlanPrefs(){
   catch(e){ state.pantry = ["Wild salmon","Eggs","Avocado","Spinach","Olive oil"]; }
   try { const t = await Store.get("qetos-tasks"); state.tasks = t ? JSON.parse(t) : { meditate:true, bed10:true }; }
   catch(e){ state.tasks = { meditate:true, bed10:true }; }
+  try { const td = await Store.get("qetos-taskdone"); state.taskDone = td ? JSON.parse(td) : {}; }
+  catch(e){ state.taskDone = {}; }
 }
+// Per-day completion for lifestyle tasks (keyed by the selected day).
+function taskDone(id){ const m = state.taskDone && state.taskDone[ymd(state.planDate)]; return !!(m && m[id]); }
+function toggleTaskDone(id){
+  const key = ymd(state.planDate);
+  if(!state.taskDone) state.taskDone = {};
+  if(!state.taskDone[key]) state.taskDone[key] = {};
+  state.taskDone[key][id] = !state.taskDone[key][id];
+  Store.set("qetos-taskdone", JSON.stringify(state.taskDone));
+  renderPlanTimeline(state._planMeals||[], state._planKetones||[]);
+}
+// Open a pantry "Cook: …" goal as a recipe in the Recipes tab.
+function cookFromPlan(recipe){ switchView("recipes"); setTimeout(()=>{ try{ makeRecipe(recipe); }catch(e){ console.warn(e); } }, 250); }
 function savePantry(){ Store.set("qetos-pantry", JSON.stringify(state.pantry||[])); }
 function saveTasks(){ Store.set("qetos-tasks", JSON.stringify(state.tasks||{})); }
 
@@ -403,7 +418,7 @@ function pantryPrepGoals(){
   const match = RECIPE_IDEAS.find(r => lc.some(it => r.toLowerCase().includes(it.split(" ")[0])));
   return [
     { part:"morning", emoji:"🧑‍🍳", title:"Plan & prep a meal", sub:"From your pantry: " + p.slice(0,3).join(", ") },
-    { part:"evening", emoji:"🍳", title: match ? ("Cook: " + match) : "Cook a keto dinner", sub: match ? "Pantry-friendly tonight" : ("Use: " + p.slice(0,3).join(", ")) },
+    { part:"evening", emoji:"🍳", title: match ? ("Cook: " + match) : "Cook a keto dinner", sub: match ? "Tap to open the recipe" : ("Use: " + p.slice(0,3).join(", ")), recipe: match || null },
   ];
 }
 
@@ -412,6 +427,21 @@ function partOf(d){ if(!d) return "morning"; const h=d.getHours(); return h<12 ?
 function timelineRow(it){
   const time = it.time ? it.time.toLocaleTimeString([], { hour:"numeric", minute:"2-digit" }) : "";
   const bg = it.kind==="task" ? "bg-accent-lavender/40" : it.kind==="prep" ? "bg-soft-mint" : "bg-surface-container-lowest";
+  // lifestyle task → checkbox to mark done for this day
+  if(it.kind==="task"){
+    return `<div class="flex items-center gap-space-3 ${bg} rounded-[16px] p-space-3">
+      <button onclick="toggleTaskDone('${it.id}')" aria-pressed="${it.done}" aria-label="Mark ${esc(it.title)} done" class="w-7 h-7 rounded-full grid place-items-center shrink-0 active:scale-90 transition ${it.done?'bg-primary text-white':'bg-white border border-outline-variant text-transparent'}"><span class="material-symbols-outlined text-[18px]">check</span></button>
+      <div class="flex-1 min-w-0"><p class="font-body-base truncate ${it.done?'line-through text-text-muted':'text-primary'}">${it.emoji} ${esc(it.title)}</p></div>
+    </div>`;
+  }
+  // pantry cook goal with a matched recipe → tap to open it in Recipes
+  if(it.kind==="prep" && it.recipe){
+    return `<button onclick="cookFromPlan('${escAttr(it.recipe)}')" class="w-full text-left flex items-center gap-space-3 ${bg} rounded-[16px] p-space-3 active:scale-[0.99] transition">
+      <span class="text-[20px] shrink-0" aria-hidden="true">${it.emoji}</span>
+      <div class="flex-1 min-w-0"><p class="font-body-base text-primary truncate">${esc(it.title)}</p>${it.sub?`<p class="font-caption text-text-muted truncate">${esc(it.sub)}</p>`:""}</div>
+      <span class="material-symbols-outlined text-text-muted shrink-0">chevron_right</span>
+    </button>`;
+  }
   return `<div class="flex items-center gap-space-3 ${bg} rounded-[16px] p-space-3">
     <span class="text-[20px] shrink-0" aria-hidden="true">${it.emoji}</span>
     <div class="flex-1 min-w-0"><p class="font-body-base text-primary truncate">${esc(it.title)}</p>${it.sub?`<p class="font-caption text-text-muted truncate">${esc(it.sub)}</p>`:""}</div>
@@ -426,9 +456,9 @@ function renderPlanTimeline(meals, ketones){
     evening:{ label:"Evening", emoji:"🌙", items:[] },
   };
   // enabled lifestyle tasks → their part of day
-  LIFESTYLE_TASKS.forEach(t => { if(state.tasks && state.tasks[t.id]) parts[t.part].items.push({ kind:"task", time:null, emoji:t.emoji, title:t.label, sub:"Lifestyle goal" }); });
+  LIFESTYLE_TASKS.forEach(t => { if(state.tasks && state.tasks[t.id]) parts[t.part].items.push({ kind:"task", id:t.id, time:null, emoji:t.emoji, title:t.label, done: taskDone(t.id) }); });
   // pantry-based meal-prep / cooking goals
-  pantryPrepGoals().forEach(g => parts[g.part].items.push({ kind:"prep", time:null, emoji:g.emoji, title:g.title, sub:g.sub }));
+  pantryPrepGoals().forEach(g => parts[g.part].items.push({ kind:"prep", time:null, emoji:g.emoji, title:g.title, sub:g.sub, recipe:g.recipe||null }));
   // logged meals
   (meals||[]).forEach(m => { const d = m.created_at ? new Date(m.created_at) : null;
     parts[partOf(d)].items.push({ kind:"meal", time:d, emoji:foodEmoji(m.name||""), title:m.name||"Meal",
@@ -853,14 +883,51 @@ function deviceRow(id,name,sub,icon){
     <div class="flex-1 min-w-0"><p class="font-body-base text-primary">${name}</p><p id="dev-sub-${id}" class="font-caption ${on?'text-accent-teal':'text-text-muted'}">${on?'Connected · syncing':sub}</p></div>
     <button id="dev-btn-${id}" onclick="connectDevice('${id}')" class="font-caption px-space-4 py-2 rounded-full active:scale-95 transition ${on?'bg-soft-mint text-primary':'bg-primary text-white'}">${on?'Disconnect':'Connect'}</button></div>`;
 }
+/* ---------- WHOOP sync module ----------
+   Telemetry a real WHOOP sync provides; hooked to the device connection so
+   the dashboard + AI use objective recovery data instead of a made-up score. */
+const WHOOP_TELEMETRY = { recovery: 72, sleep_hours: 7.7, sleep_performance: 89, hrv: 64, rhr: 52 };
+function whoopData(){
+  if(!(state.connections && state.connections.whoop)) return null;
+  if(!state.whoop) state.whoop = { ...WHOOP_TELEMETRY, synced_at: Date.now() };
+  return state.whoop;
+}
+function recoveryLabel(v){ return v>=67 ? "High recovery" : v>=34 ? "Moderate" : "Low recovery"; }
+function recoveryArrow(v){ return v>=67 ? "↑" : v>=34 ? "↔" : "↓"; }
+function fmtSleep(h){ const H=Math.floor(h), M=Math.round((h-H)*60); return `${H}h ${M}m`; }
+function renderWhoopCard(){
+  const el=$("whoopCard"); if(!el) return;
+  const w = whoopData();
+  if(!w){
+    el.innerHTML = `
+      <div class="flex items-center gap-1 font-caption text-text-muted"><span class="material-symbols-outlined text-[14px]">ecg_heart</span> WHOOP RECOVERY</div>
+      <p class="font-body-sm text-text-muted">Connect WHOOP to ground your day in real recovery, sleep, and strain — no guesswork.</p>
+      <button onclick="openSetting('connect')" class="bg-primary text-white font-body-base py-space-3 px-space-6 rounded-full w-full active:scale-95 transition">Connect WHOOP</button>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="flex justify-between items-end">
+      <div class="flex flex-col">
+        <span class="font-caption text-text-muted flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">ecg_heart</span> WHOOP RECOVERY</span>
+        <span class="font-display-xl text-display-xl text-primary mt-1">${w.recovery}<span class="font-body-base text-text-muted">%</span></span>
+      </div>
+      <div class="flex items-center gap-1 bg-white/40 px-3 py-1 rounded-full"><span class="font-body-sm" aria-hidden="true">${recoveryArrow(w.recovery)}</span><span class="font-caption">${recoveryLabel(w.recovery)}</span></div>
+    </div>
+    <div class="w-full h-3 bg-white/50 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-accent-teal to-primary rounded-full" style="width:${w.recovery}%"></div></div>
+    <div class="grid grid-cols-3 gap-space-2 text-center">${stat(fmtSleep(w.sleep_hours),"sleep")}${stat(w.sleep_performance+"%","sleep perf")}${stat(w.hrv+"ms","HRV")}</div>
+    <p class="font-caption text-text-muted">Synced from WHOOP</p>`;
+}
+
 function connectDevice(id){
   const on = !state.connections[id]; state.connections[id] = on;
+  if(id==="whoop") state.whoop = on ? { ...WHOOP_TELEMETRY, synced_at: Date.now() } : null;
   const names = {whoop:"WHOOP",oura:"Oura Ring",cronometer:"Cronometer"};
   const sums = {whoop:"Recovery 72% · Sleep 7h 42m",oura:"Readiness 81 · Sleep 88",cronometer:"1,840 kcal · 18g net carbs"};
   const btn = $("dev-btn-"+id), sub = $("dev-sub-"+id);
   if(on){ sub.textContent = "Connecting…"; sub.className = "font-caption text-text-muted";
     setTimeout(() => { sub.textContent = sums[id]; sub.className = "font-caption text-accent-teal"; btn.textContent = "Disconnect"; btn.className = "font-caption px-space-4 py-2 rounded-full active:scale-95 transition bg-soft-mint text-primary"; toast(names[id]+" connected · syncing"); }, 850);
   } else { sub.textContent = "Disconnected"; sub.className = "font-caption text-text-muted"; btn.textContent = "Connect"; btn.className = "font-caption px-space-4 py-2 rounded-full active:scale-95 transition bg-primary text-white"; toast(names[id]+" disconnected"); }
+  if(id==="whoop") renderWhoopCard();
   saveState();
 }
 function copyText(str,msg){ if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(str).then(()=>toast(msg)).catch(()=>toast(msg)); } else toast(msg); }
@@ -1155,10 +1222,23 @@ async function loadState(){
 /* ===================== DAILY LOOP (Phase 5) ===================== */
 function partOfDay(){ const h = new Date().getHours(); return h < 12 ? "morning" : h >= 17 ? "evening" : "day"; }
 let _lastCheckIn = 0;
+// Surface live WHOOP telemetry as context chips in the chat (the data is also
+// passed into the AI context layer via ctx()).
+function appendWhoopChips(w){
+  const log=$("chatLog"); if(!log || !w) return;
+  const chips = [`Recovery ${w.recovery}%`, `Sleep ${fmtSleep(w.sleep_hours)}`, `HRV ${w.hrv}ms`]
+    .map(c=>`<span class="font-caption bg-soft-mint text-primary px-space-3 py-1 rounded-full">${c}</span>`).join("");
+  const el=document.createElement("div");
+  el.className="flex flex-wrap items-center gap-2 reveal";
+  el.innerHTML = `<span class="font-caption text-text-muted inline-flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">ecg_heart</span> WHOOP</span>${chips}`;
+  log.appendChild(el);
+}
 async function proactiveCheckIn(force){
   // throttle so a refresh storm doesn't spam the model
   if(!force && Date.now() - _lastCheckIn < 4000) return;
   _lastCheckIn = Date.now();
+  const w = whoopData();
+  if(w) appendWhoopChips(w);   // auto-populate context chips when telemetry is synced
   await sayFrom(Concierge.proactive(ctx(), partOfDay()));
 }
 function seedChat(){ proactiveCheckIn(true); }
@@ -1197,7 +1277,7 @@ async function init(){
   await loadState();
   await loadProfile();
   await loadPlanPrefs();
-  renderJourney(); renderSettings(); renderFood(); renderPlanHeader();
+  renderJourney(); renderSettings(); renderFood(); renderPlanHeader(); renderWhoopCard();
   const total = state.cravingWins + state.habitWins; for(let i=0;i<total;i++) addOrb();
   // real Supabase session (e.g. returning from a magic link) logs in + seeds
   let session = null; try { session = await DB.getSession(); } catch(e){}

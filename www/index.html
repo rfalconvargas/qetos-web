@@ -103,27 +103,8 @@
 
     <!-- ===== CHAT ===== -->
     <section id="view-chat" class="view active px-space-8 pb-40 pt-space-2">
-      <!-- Energy Stability Score -->
-      <section class="bg-soft-mint p-space-6 rounded-[24px] flex flex-col gap-space-4 mt-space-2">
-        <div class="flex justify-between items-end">
-          <div class="flex flex-col">
-            <span class="font-caption text-text-muted flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">bolt</span> ENERGY STABILITY SCORE
-            </span>
-            <span class="font-display-xl text-display-xl text-primary mt-1"><span id="energyVal">88</span>%</span>
-          </div>
-          <div class="flex items-center gap-1 text-on-secondary-container bg-white/40 px-3 py-1 rounded-full">
-            <span class="material-symbols-outlined text-[16px]">trending_up</span><span class="font-caption">Gaining</span>
-          </div>
-        </div>
-        <div class="w-full h-3 bg-white/50 rounded-full overflow-hidden">
-          <div id="energyBar" class="h-full w-[88%] bg-gradient-to-r from-accent-teal to-primary rounded-full transition-[width] duration-1000"></div>
-        </div>
-        <div class="flex flex-col gap-space-4">
-          <p class="font-body-sm text-text-muted italic">Calm &amp; resilient · trending gently upward</p>
-          <button onclick="logEnergyWin()" class="bg-primary text-white font-body-base py-space-3 px-space-6 rounded-full w-full active:scale-95 transition-transform">Log My Energy Win</button>
-        </div>
-      </section>
+      <!-- WHOOP recovery (replaces the old subjective Energy Stability Score) -->
+      <section id="whoopCard" class="bg-soft-mint p-space-6 rounded-[24px] flex flex-col gap-space-4 mt-space-2"></section>
 
       <div id="chatLog" class="flex flex-col gap-space-6 mt-space-6"></div>
     </section>
