@@ -459,6 +459,11 @@ function renderPlanTimeline(meals, ketones){
   LIFESTYLE_TASKS.forEach(t => { if(state.tasks && state.tasks[t.id]) parts[t.part].items.push({ kind:"task", id:t.id, time:null, emoji:t.emoji, title:t.label, done: taskDone(t.id) }); });
   // pantry-based meal-prep / cooking goals
   pantryPrepGoals().forEach(g => parts[g.part].items.push({ kind:"prep", time:null, emoji:g.emoji, title:g.title, sub:g.sub, recipe:g.recipe||null }));
+  // recovery-aware nudge (today only — WHOOP recovery is a current snapshot)
+  if (isSameDay(state.planDate, startOfDay(new Date()))) {
+    const nudge = recoveryNudge();
+    if (nudge) parts.morning.items.unshift({ kind:"prep", time:null, emoji:nudge.emoji, title:nudge.title, sub:nudge.sub });
+  }
   // logged meals
   (meals||[]).forEach(m => { const d = m.created_at ? new Date(m.created_at) : null;
     parts[partOf(d)].items.push({ kind:"meal", time:d, emoji:foodEmoji(m.name||""), title:m.name||"Meal",
@@ -886,7 +891,7 @@ function deviceRow(id,name,sub,icon){
 /* ---------- WHOOP sync module ----------
    Telemetry a real WHOOP sync provides; hooked to the device connection so
    the dashboard + AI use objective recovery data instead of a made-up score. */
-const WHOOP_TELEMETRY = { recovery: 72, sleep_hours: 7.7, sleep_performance: 89, hrv: 64, rhr: 52 };
+const WHOOP_TELEMETRY = { recovery: 72, sleep_hours: 7.7, sleep_performance: 89, hrv: 64, rhr: 52, strain: 12.4 };
 function whoopData(){
   if(!(state.connections && state.connections.whoop)) return null;
   if(!state.whoop) state.whoop = { ...WHOOP_TELEMETRY, synced_at: Date.now() };
@@ -914,8 +919,17 @@ function renderWhoopCard(){
       <div class="flex items-center gap-1 bg-white/40 px-3 py-1 rounded-full"><span class="font-body-sm" aria-hidden="true">${recoveryArrow(w.recovery)}</span><span class="font-caption">${recoveryLabel(w.recovery)}</span></div>
     </div>
     <div class="w-full h-3 bg-white/50 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-accent-teal to-primary rounded-full" style="width:${w.recovery}%"></div></div>
-    <div class="grid grid-cols-3 gap-space-2 text-center">${stat(fmtSleep(w.sleep_hours),"sleep")}${stat(w.sleep_performance+"%","sleep perf")}${stat(w.hrv+"ms","HRV")}</div>
-    <p class="font-caption text-text-muted">Synced from WHOOP</p>`;
+    <div class="grid grid-cols-3 gap-space-2 text-center">${stat(fmtSleep(w.sleep_hours),"sleep")}${stat(w.strain!=null?w.strain:"—","strain")}${stat(w.hrv+"ms","HRV")}</div>
+    <p class="font-caption text-text-muted">Resting HR ${w.rhr} bpm · ${w.sleep_performance}% sleep performance · via WHOOP</p>`;
+}
+
+// Recovery-aware nudge for the Plan timeline, derived from WHOOP recovery.
+function recoveryNudge(){
+  const w = whoopData(); if(!w) return null;
+  const r = w.recovery;
+  if(r >= 67) return { emoji:"🟢", title:"Green recovery — a good day to push", sub:`WHOOP ${r}% · your body can take intensity today` };
+  if(r >= 34) return { emoji:"🟡", title:"Moderate recovery — train smart", sub:`WHOOP ${r}% · moderate effort, prioritize protein, daylight & hydration` };
+  return { emoji:"🔴", title:"Low recovery — keep it gentle", sub:`WHOOP ${r}% · favor rest, a walk, electrolytes; ease the strain` };
 }
 
 function connectDevice(id){
