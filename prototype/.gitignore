@@ -1,0 +1,6 @@
+# Large media assets — kept on disk, not tracked in git (too large for GitHub).
+# Re-add via Git LFS later if these need versioning.
+*.mp4
+*.mov
+*.webm
+*.m4v

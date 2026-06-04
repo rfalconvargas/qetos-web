@@ -856,6 +856,7 @@ const settings = [
   { id:"account", icon:"account_circle", label:"User Account", sub:"raul@rfalcon.com" },
   { id:"profile", icon:"badge", label:"Profile", sub:"Name, age, focus" },
   { id:"targets", icon:"target", label:"Targets", sub:"Macros, ketones, daylight" },
+  { id:"shopping", icon:"shopping_cart", label:"Shopping List", sub:"Shared & collaborative · real-time" },
   { id:"rhythm", icon:"notifications_active", label:"Daily rhythm", sub:"Morning & evening check-ins" },
   { id:"connect", icon:"cable", label:"Connect Apps & Devices", sub:"WHOOP · Oura · Cronometer" },
   { id:"sharing", icon:"share", label:"Sharing", sub:"Share with your care team" },
@@ -870,7 +871,7 @@ function renderSettings(){
       <span class="flex-1 min-w-0"><span class="block font-body-base text-primary">${s.label}</span><span class="block font-caption text-text-muted truncate">${s.sub}</span></span>
       <span class="material-symbols-outlined text-text-muted">chevron_right</span></button>`).join("");
 }
-async function openSetting(id){ const s = settings.find(x=>x.id===id); $("settingTitle").textContent = s.label; if(id==="profile" && !state.profile) await loadProfile(); $("settingBody").innerHTML = settingBody(id); $("settingPanel").classList.add("open"); }
+async function openSetting(id){ if(id==="shopping"){ openShopping(); return; } const s = settings.find(x=>x.id===id); $("settingTitle").textContent = s.label; if(id==="profile" && !state.profile) await loadProfile(); $("settingBody").innerHTML = settingBody(id); $("settingPanel").classList.add("open"); }
 function closeSetting(){ $("settingPanel").classList.remove("open"); }
 
 function field(label, value, type="text", id=""){

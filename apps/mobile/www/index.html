@@ -254,10 +254,13 @@
   <!-- ============ SHOPPING LIST · FULL-SCREEN OVERLAY ============ -->
   <div id="shoppingScreen" class="panel-slide absolute inset-0 z-50 bg-background-base flex flex-col" role="dialog" aria-modal="true" aria-label="Shopping list">
     <div class="flex items-center gap-space-3 px-space-6 py-space-4 border-b border-outline-variant bg-background-base">
-      <button onclick="closeShopping()" aria-label="Back" class="w-9 h-9 rounded-full bg-surface-container-lowest grid place-items-center text-primary active:scale-95 transition"><span class="material-symbols-outlined">chevron_left</span></button>
-      <h2 class="font-display-lg text-display-lg text-primary flex-1">Shopping list</h2>
-      <span id="shopSyncDot" class="hidden material-symbols-outlined text-accent-teal text-[18px]" title="Live sync on" aria-hidden="true">sensors</span>
-      <button onclick="openShareSheet()" aria-label="Share list" class="w-9 h-9 rounded-full bg-surface-container-lowest grid place-items-center text-primary active:scale-95 transition"><span class="material-symbols-outlined">ios_share</span></button>
+      <button onclick="closeShopping()" aria-label="Back" class="w-9 h-9 rounded-full bg-surface-container-lowest grid place-items-center text-primary active:scale-95 transition shrink-0"><span class="material-symbols-outlined">chevron_left</span></button>
+      <input id="shopTitle" type="text" maxlength="60" placeholder="Name this list…" aria-label="List name"
+             onchange="renameList(this.value)" onkeydown="if(event.key==='Enter'){this.blur();}"
+             class="flex-1 min-w-0 bg-transparent outline-none font-display-lg text-display-lg text-primary placeholder:text-text-muted/50"/>
+      <span id="shopPresence" class="flex items-center shrink-0"></span>
+      <span id="shopSyncDot" class="hidden material-symbols-outlined text-accent-teal text-[18px] shrink-0" title="Live sync on" aria-hidden="true">sensors</span>
+      <button onclick="openShareSheet()" aria-label="Share list" class="w-9 h-9 rounded-full bg-surface-container-lowest grid place-items-center text-primary active:scale-95 transition shrink-0"><span class="material-symbols-outlined">ios_share</span></button>
     </div>
 
     <div class="px-space-6 pt-space-4">
@@ -394,7 +397,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js?v=20260604"></script>
 <script src="js/ai.js?v=20260604"></script>
-<script src="js/app.js?v=20260604"></script>
-<script src="js/shopping.js?v=20260604"></script>
+<script src="js/app.js?v=20260605"></script>
+<script src="js/shopping.js?v=20260605"></script>
 </body>
 </html>

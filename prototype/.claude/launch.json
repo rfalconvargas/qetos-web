@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mytabolism",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4178"],
+      "port": 4178
+    },
+    {
+      "name": "ketofy",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4180", "--directory", "C:/ketofy-app-v1/ketofy-mobile/www"],
+      "port": 4180
+    },
+    {
+      "name": "qetos-landing",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4182", "--directory", "C:/ketofy-app-v1/ketofy-mobile/landing"],
+      "port": 4182
+    }
+  ]
+}

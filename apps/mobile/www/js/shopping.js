@@ -1,63 +1,83 @@
 /* =====================================================================
-   Qetos — Shopping list (full-screen overlay + realtime share)
+   Qetos — Shopping list (full-screen overlay + durable real-time share)
    Loaded AFTER app.js, so it relies on these globals:
-     $, Store, state, DB, toast, haptic, escapeHtml
-   Single source of truth is `state.shopping` (shared with the Food tab's
-   inline list in app.js). We keep that list in sync but never redefine
-   app.js's renderShopping()/toggleShop().
+     state, DB, toast, Store, escapeHtml, (optional) haptic, renderShopping
+   ---------------------------------------------------------------------
+   DURABLE & COLLABORATIVE: the list lives server-side in the
+   shared_lists / shared_list_items tables, reached only through the
+   token-gated SECURITY DEFINER RPCs in supabase-client.js (DB.*Shared*).
+   An unguessable share_token (uuid) is the capability — anyone with the
+   link can view/add/check/rename, no account needed.
 
-   Realtime: `DB.init()` returns the live Supabase client, so we open a
-   broadcast channel on it directly — no duplicated keys, no change to the
-   core-owned supabase-client.js. Sharing is room-based: a token persisted
-   under localStorage('qetos-shop-token') identifies the shared list; anyone
-   opening the share link joins the same channel and sees live updates.
+   REALTIME: the shared tables are RLS-locked (no anon SELECT), so
+   postgres_changes can't deliver to anon. Instead we use a Realtime
+   *broadcast* channel keyed by the token: every mutation sends a light
+   "sync" ping and peers re-fetch the authoritative state via
+   get_shared_list. Presence powers the live collaborator avatars.
+
+   state.shopping stays mirrored from the shared list so the Food-tab's
+   inline list (app.js renderShopping) keeps working unchanged.
    ===================================================================== */
 (function () {
   "use strict";
 
   const TOKEN_KEY = "qetos-shop-token";
+  const NAME_KEY  = "qetos-collab-name";
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  let channel = null;          // active Supabase realtime channel (or null)
-  let activeToken = null;      // token of the room we're joined to
-  let applyingRemote = false;  // guard: don't re-broadcast remote-applied changes
-  let booted = false;
+  const shop = {
+    token: null,
+    list: { id: null, name: "", items: [] },
+    channel: null,
+    me: "You",
+    isVisitor: false,
+    booted: false,
+  };
 
-  state.shopping = (state.shopping || []);
-
-  /* ---------- model helpers ---------- */
-  function uid() { return "l" + Math.random().toString(36).slice(2, 9); }
-
-  // Normalise any item (local or DB row or broadcast payload) to one shape.
-  function norm(it) {
-    it = it || {};
-    return {
-      id: it.id || null,            // Supabase row id (present once loaded from DB)
-      lid: it.lid || uid(),         // stable local id (survives broadcast round-trips)
-      item: it.item || "",
-      qty: it.qty || "",
-      store: it.store || null,
-      checked: !!it.checked,
-    };
-  }
-  function payloadItems() {
-    return state.shopping.map(s => ({ id: s.id || null, lid: s.lid, item: s.item, qty: s.qty, store: s.store || null, checked: !!s.checked }));
-  }
-
-  function client() { try { return DB && DB.init ? DB.init() : null; } catch (e) { return null; } }
+  const $id = (id) => document.getElementById(id);
+  function sbClient() { try { return DB && DB.init ? DB.init() : null; } catch (e) { return null; } }
   function signedIn() { try { return !!(DB && DB.ready && DB.ready() && DB.currentUser && DB.currentUser()); } catch (e) { return false; } }
+  function esc(s) { try { return escapeHtml(String(s == null ? "" : s)); } catch (e) { return String(s == null ? "" : s); } }
+  function buzz() { try { if (typeof haptic === "function") haptic(); } catch (e) {} }
+  function note(m) { try { if (typeof toast === "function") toast(m); } catch (e) {} }
+  function normItem(it) { return { id: it.id, item: it.item || "", qty: it.qty || "", checked: !!it.checked, added_by: it.added_by || null }; }
 
-  // Mirror changes into the Food-tab inline list without owning its render fn.
-  function syncFoodTab() { try { if (typeof renderShopping === "function") renderShopping(); } catch (e) {} }
+  /* ---------- identity ---------- */
+  async function resolveName() {
+    try { const n = await Store.get(NAME_KEY); if (n && n.trim()) return n.trim(); } catch (e) {}
+    try { if (signedIn() && DB.getProfile) { const p = await DB.getProfile(); if (p && p.full_name) return String(p.full_name).split(" ")[0]; } } catch (e) {}
+    return shop.isVisitor ? "Guest" : "You";
+  }
+  function changeName() {
+    const n = prompt("Your name on this list", shop.me || "Guest");
+    if (n && n.trim()) {
+      shop.me = n.trim();
+      try { Store.set(NAME_KEY, shop.me); } catch (e) {}
+      if (shop.channel) { try { shop.channel.track({ name: shop.me }); } catch (e) {} }
+      broadcast();
+    }
+  }
 
-  /* ---------- rendering ---------- */
+  /* ---------- mirror to the Food-tab inline list (app.js owns renderShopping) ---------- */
+  function mirror() {
+    try {
+      state.shopping = shop.list.items.map((it) => ({ id: it.id, item: it.item, qty: it.qty || "", checked: !!it.checked, store: null }));
+      if (typeof renderShopping === "function") renderShopping();
+    } catch (e) {}
+  }
+
+  /* ---------- rendering (overlay) ---------- */
   function render() {
-    const body = $("shopBody");
-    if (!body) return;
-    const items = state.shopping;
-    const total = items.length;
-    const done = items.filter(s => s.checked).length;
+    const titleEl = $id("shopTitle");
+    if (titleEl && document.activeElement !== titleEl) titleEl.value = shop.list.name || "";
 
-    const sum = $("shopSummary");
+    const body = $id("shopBody");
+    if (!body) return;
+    const items = shop.list.items;
+    const total = items.length;
+    const done = items.filter((s) => s.checked).length;
+
+    const sum = $id("shopSummary");
     if (sum) {
       sum.innerHTML = total
         ? `<p class="font-caption text-text-muted uppercase tracking-widest">${done}/${total} gathered</p>`
@@ -79,170 +99,215 @@
     body.innerHTML = items.map((s, i) => `
       <div class="flex items-center gap-space-3 bg-surface-container-lowest rounded-[16px] p-space-3">
         <button onclick="shopToggle(${i})" aria-label="Toggle item" class="w-6 h-6 rounded-full border ${s.checked ? "bg-accent-teal border-transparent text-primary" : "border-outline text-transparent"} grid place-items-center shrink-0 active:scale-90 transition"><span class="material-symbols-outlined text-[16px]">check</span></button>
-        <span class="flex-1 font-body-sm ${s.checked ? "text-text-muted line-through" : "text-primary"}">${escapeHtml(s.qty ? s.qty + " " : "")}${escapeHtml(s.item)}${s.store ? ` <span class="font-caption text-text-muted">· ${escapeHtml(s.store)}</span>` : ""}</span>
+        <span class="flex-1 font-body-sm ${s.checked ? "text-text-muted line-through" : "text-primary"}">${esc(s.qty ? s.qty + " " : "")}${esc(s.item)}${s.added_by ? ` <span class="font-caption text-text-muted">· ${esc(s.added_by)}</span>` : ""}</span>
         <button onclick="shopRemove(${i})" aria-label="Remove item" class="w-6 h-6 rounded-full grid place-items-center text-text-muted active:scale-90 transition shrink-0"><span class="material-symbols-outlined text-[18px]">close</span></button>
       </div>`).join("");
   }
 
-  /* ---------- load ---------- */
-  async function load() {
-    if (signedIn()) {
-      try {
-        const rows = await DB.listShopping();
-        if (Array.isArray(rows)) state.shopping = rows.map(norm);
-      } catch (e) { console.warn("[shop] load:", e); }
-    } else {
-      state.shopping = state.shopping.map(norm);
-    }
-    render();
+  function renderPresence(pstate) {
+    const el = $id("shopPresence");
+    if (!el) return;
+    const names = [];
+    Object.values(pstate || {}).forEach((arr) => (arr || []).forEach((p) => { if (p && p.name) names.push(p.name); }));
+    const uniq = [...new Set(names)];
+    if (uniq.length <= 1) { el.innerHTML = ""; return; }
+    el.innerHTML = uniq.slice(0, 3).map((n, i) =>
+      `<span class="w-6 h-6 -ml-1.5 first:ml-0 rounded-full grid place-items-center font-caption border-2 border-background-base ${i % 2 ? "bg-accent-lavender" : "bg-accent-teal"} text-primary" title="${esc(n)}">${esc((n[0] || "?").toUpperCase())}</span>`
+    ).join("")
+      + (uniq.length > 3 ? `<span class="w-6 h-6 -ml-1.5 rounded-full grid place-items-center font-caption bg-soft-mint text-text-muted border-2 border-background-base">+${uniq.length - 3}</span>` : "");
   }
 
-  /* ---------- optimistic mutations ---------- */
-  function shopAdd() {
-    const inp = $("shopInput");
+  /* ---------- list lifecycle ---------- */
+  async function loadList(token, opts) {
+    opts = opts || {};
+    if (!sbClient()) return false;
+    try {
+      const data = await DB.getSharedList(token);
+      if (!data || !data.id) { if (!opts.silent) console.warn("[shop] list not found"); return false; }
+      shop.token = token;
+      shop.list = { id: data.id, name: data.name || "", items: (data.items || []).map(normItem) };
+      render(); mirror();
+      return true;
+    } catch (e) { if (!opts.silent) console.warn("[shop] load:", e); return false; }
+  }
+
+  async function createList(name) {
+    if (!sbClient()) { note("Offline — can't create the list yet"); return null; }
+    if (!shop.me) shop.me = await resolveName();
+    try {
+      const row = await DB.createSharedList(name || "My Shopping List", shop.me);
+      if (!row || !row.share_token) { note("Could not create the list"); return null; }
+      shop.token = row.share_token;
+      shop.list = { id: row.id, name: row.name || "My Shopping List", items: [] };
+      try { await Store.set(TOKEN_KEY, shop.token); } catch (e) {}
+      render(); mirror();
+      return shop.token;
+    } catch (e) { console.warn("[shop] create:", e); note("Could not create the list"); return null; }
+  }
+
+  // Resolve (or lazily create) the active shared list; returns its share_token.
+  async function ensureList() {
+    if (shop.token && shop.list.id) return shop.token;
+    let token = null;
+    try { token = await Store.get(TOKEN_KEY); } catch (e) {}
+    if (token && UUID_RE.test(token) && await loadList(token)) return shop.token;
+    if (shop.isVisitor) return null;                 // visitor + bad token → nothing to show
+    return await createList();                        // owner → start a fresh list
+  }
+
+  /* ---------- mutations (optimistic + RPC + broadcast ping) ---------- */
+  async function shopAdd() {
+    const inp = $id("shopInput");
     if (!inp) return;
     const v = (inp.value || "").trim();
     if (!v) return;
-    const it = norm({ item: v });
-    state.shopping.push(it);          // optimistic: render immediately
     inp.value = "";
-    render(); syncFoodTab();
-    if (signedIn()) { try { DB.addShoppingItem(it.item, it.qty || "", it.store || null); } catch (e) {} }
-    broadcast();
-    haptic();
-  }
+    const token = await ensureList();
+    if (!token) { note("Couldn't open the list"); return; }
+    if (!shop.me) shop.me = await resolveName();
 
-  function shopToggle(i) {
-    const s = state.shopping[i];
-    if (!s) return;
-    s.checked = !s.checked;           // optimistic
-    render(); syncFoodTab();
-    if (s.id && signedIn()) { try { DB.setShoppingChecked(s.id, s.checked); } catch (e) {} }
-    broadcast();
-    haptic();
-  }
-
-  function shopRemove(i) {
-    const s = state.shopping[i];
-    if (!s) return;
-    state.shopping.splice(i, 1);      // optimistic
-    render(); syncFoodTab();
-    // Remote delete only if the data layer exposes it (core branch may add this).
-    if (s.id && signedIn() && DB && typeof DB.removeShoppingItem === "function") { try { DB.removeShoppingItem(s.id); } catch (e) {} }
-    broadcast();
-  }
-
-  function shopClearChecked() {
-    const removed = state.shopping.filter(s => s.checked);
-    state.shopping = state.shopping.filter(s => !s.checked);
-    render(); syncFoodTab();
-    if (signedIn() && DB && typeof DB.removeShoppingItem === "function") {
-      removed.forEach(s => { if (s.id) { try { DB.removeShoppingItem(s.id); } catch (e) {} } });
+    const tmp = { id: "tmp-" + Date.now(), item: v, qty: "", checked: false, added_by: shop.me };
+    shop.list.items.push(tmp); render(); mirror(); buzz();
+    try {
+      const row = await DB.addSharedItem(token, v, null, shop.me);
+      const idx = shop.list.items.findIndex((x) => x.id === tmp.id);
+      if (row && row.id) { if (idx >= 0) shop.list.items[idx] = normItem(row); }
+      else if (idx >= 0) shop.list.items.splice(idx, 1);
+      render(); mirror(); broadcast();
+    } catch (e) {
+      const idx = shop.list.items.findIndex((x) => x.id === tmp.id);
+      if (idx >= 0) shop.list.items.splice(idx, 1);
+      render(); mirror(); note("Could not add item");
     }
-    broadcast();
-    haptic();
   }
 
-  /* ---------- overlay open / close ---------- */
-  function openShopping() { const el = $("shoppingScreen"); if (!el) return; el.classList.add("open"); load(); }
-  function closeShopping() { const el = $("shoppingScreen"); if (el) el.classList.remove("open"); }
-
-  /* ---------- realtime broadcast sync ---------- */
-  function setSyncDot(on) { const d = $("shopSyncDot"); if (d) d.classList.toggle("hidden", !on); }
-
-  function shareLinkFor(token) {
-    try { const u = new URL(location.href); u.hash = ""; u.searchParams.set("shop", token); return u.toString(); }
-    catch (e) { return location.origin + location.pathname + "?shop=" + token; }
+  async function shopToggle(i) {
+    const s = shop.list.items[i];
+    if (!s) return;
+    const next = !s.checked;
+    s.checked = next; render(); mirror(); buzz();
+    if (String(s.id).startsWith("tmp-")) return;
+    try { await DB.setSharedChecked(shop.token, s.id, next); broadcast(); }
+    catch (e) { s.checked = !next; render(); mirror(); note("Sync failed"); }
   }
 
-  function applyRemote(payload) {
-    if (!payload || !Array.isArray(payload.items)) return;
-    applyingRemote = true;            // last-write-wins; don't echo back
-    state.shopping = payload.items.map(norm);
-    render(); syncFoodTab();
-    applyingRemote = false;
+  async function shopRemove(i) {
+    const s = shop.list.items[i];
+    if (!s) return;
+    const backup = shop.list.items.slice();
+    shop.list.items.splice(i, 1); render(); mirror(); buzz();
+    if (String(s.id).startsWith("tmp-")) return;
+    try { await DB.removeSharedItem(shop.token, s.id); broadcast(); }
+    catch (e) { shop.list.items = backup; render(); mirror(); note("Could not remove"); }
   }
 
+  async function shopClearChecked() {
+    if (!shop.token) return;
+    const backup = shop.list.items.slice();
+    shop.list.items = shop.list.items.filter((s) => !s.checked); render(); mirror(); buzz();
+    try { await DB.clearCheckedShared(shop.token); broadcast(); note("Cleared checked items"); }
+    catch (e) { shop.list.items = backup; render(); mirror(); note("Could not clear"); }
+  }
+
+  async function renameList(val) {
+    const name = (val || "").trim() || "My Shopping List";
+    shop.list.name = name;
+    const token = shop.token || await ensureList();
+    if (!token) return;
+    try { await DB.renameSharedList(token, name); note("List renamed"); broadcast(); }
+    catch (e) { note("Could not rename"); }
+  }
+
+  /* ---------- realtime: broadcast ping + RPC refetch + presence ---------- */
+  function setSyncDot(on) { const d = $id("shopSyncDot"); if (d) d.classList.toggle("hidden", !on); }
   function broadcast() {
-    if (applyingRemote || !channel) return;
-    try { channel.send({ type: "broadcast", event: "sync", payload: { items: payloadItems(), at: Date.now() } }); }
-    catch (e) { console.warn("[shop] broadcast:", e); }
+    if (!shop.channel) return;
+    try { shop.channel.send({ type: "broadcast", event: "sync", payload: { by: shop.me } }); } catch (e) {}
   }
-
   function joinRoom(token) {
-    const sb = client();
-    activeToken = token || null;
-    if (!sb || !token) { setSyncDot(false); return false; }
+    const sb = sbClient();
+    if (!sb || !token) { setSyncDot(false); return; }
     leaveRoom();
     try {
-      channel = sb.channel("shop:" + token, { config: { broadcast: { self: false } } });
-      channel.on("broadcast", { event: "sync" }, ({ payload }) => applyRemote(payload));
-      // A newcomer says "hello" → everyone re-broadcasts so they get the current list.
-      channel.on("broadcast", { event: "hello" }, () => broadcast());
-      channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          setSyncDot(true);
-          try { channel.send({ type: "broadcast", event: "hello", payload: {} }); } catch (e) {}
-        }
+      const ch = sb.channel("shoplist:" + token, {
+        config: { broadcast: { self: false }, presence: { key: (shop.me || "me") + "-" + Math.random().toString(36).slice(2, 7) } },
       });
-      return true;
-    } catch (e) {
-      console.warn("[shop] joinRoom:", e); channel = null; setSyncDot(false); return false;
-    }
+      ch.on("broadcast", { event: "sync" }, (m) => {
+        loadList(token, { silent: true });
+        const by = m && m.payload && m.payload.by;
+        if (by && by !== shop.me) note(by + " updated the list");
+      });
+      ch.on("presence", { event: "sync" }, () => renderPresence(ch.presenceState()));
+      ch.subscribe((status) => {
+        if (status === "SUBSCRIBED") { setSyncDot(true); try { ch.track({ name: shop.me }); } catch (e) {} }
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") { setSyncDot(false); }
+      });
+      shop.channel = ch;
+    } catch (e) { console.warn("[shop] joinRoom:", e); setSyncDot(false); }
   }
-
   function leaveRoom() {
-    if (channel) {
+    if (shop.channel) {
       try {
-        const sb = client();
-        if (sb && sb.removeChannel) sb.removeChannel(channel);
-        else if (channel.unsubscribe) channel.unsubscribe();
+        const sb = sbClient();
+        if (sb && sb.removeChannel) sb.removeChannel(shop.channel);
+        else if (shop.channel.unsubscribe) shop.channel.unsubscribe();
       } catch (e) {}
-      channel = null;
+      shop.channel = null;
     }
     setSyncDot(false);
   }
 
+  /* ---------- overlay open / close ---------- */
+  async function openShopping() {
+    const el = $id("shoppingScreen");
+    if (!el) return;
+    el.classList.add("open");
+    shop.me = await resolveName();
+    const token = await ensureList();
+    if (token) joinRoom(token);
+    render();
+  }
+  function closeShopping() { const el = $id("shoppingScreen"); if (el) el.classList.remove("open"); closeShareSheet(); }
+
   /* ---------- share sheet ---------- */
-  async function ensureToken() {
-    let token = await Store.get(TOKEN_KEY);
-    if (!token) { token = uid() + uid(); await Store.set(TOKEN_KEY, token); }
-    return token;
+  function shareLinkFor(token) {
+    try { const u = new URL(location.href); u.hash = ""; u.searchParams.set("shop", token); return u.toString(); }
+    catch (e) { return location.origin + location.pathname + "?shop=" + token; }
   }
-
   async function openShareSheet() {
-    const sheet = $("shareSheet");
+    const sheet = $id("shareSheet");
     if (!sheet) return;
-    const token = await ensureToken();
-    const joined = (activeToken === token && channel) ? true : joinRoom(token);
-    const linkEl = $("shareLink"); if (linkEl) linkEl.textContent = shareLinkFor(token);
-    const stop = $("shopStopShareBtn"); if (stop) stop.classList.remove("hidden");
+    const token = await ensureList();
+    if (!token) { note("List is still loading…"); return; }
+    if (!shop.channel) joinRoom(token);
+    const linkEl = $id("shareLink"); if (linkEl) linkEl.textContent = shareLinkFor(token);
+    const stop = $id("shopStopShareBtn"); if (stop) stop.classList.remove("hidden");
     sheet.classList.remove("hidden");
-    if (!joined && !client()) toast("Link's ready — live sync starts when you're back online");
   }
-  function closeShareSheet() { const s = $("shareSheet"); if (s) s.classList.add("hidden"); }
-
+  function closeShareSheet() { const s = $id("shareSheet"); if (s) s.classList.add("hidden"); }
   async function shopCopyLink() {
-    const token = await Store.get(TOKEN_KEY);
-    if (!token) return;
-    const link = shareLinkFor(token);
-    try { await navigator.clipboard.writeText(link); toast("Link copied"); }
-    catch (e) { toast("Copy this link to share"); }
-    haptic();
+    if (!shop.token) return;
+    const link = shareLinkFor(shop.token);
+    try { await navigator.clipboard.writeText(link); note("Link copied — send it to your family"); }
+    catch (e) {
+      if (navigator.share) { try { await navigator.share({ title: shop.list.name || "Shopping list", url: link }); } catch (_) {} }
+      else note("Copy this link to share");
+    }
+    buzz();
   }
-
   async function shopStopShare() {
     leaveRoom();
-    await Store.remove(TOKEN_KEY);
-    activeToken = null;
-    const stop = $("shopStopShareBtn"); if (stop) stop.classList.add("hidden");
+    try { await Store.remove(TOKEN_KEY); } catch (e) {}
+    shop.token = null;
+    shop.list = { id: null, name: "", items: [] };
+    render(); mirror();
+    const stop = $id("shopStopShareBtn"); if (stop) stop.classList.add("hidden");
     closeShareSheet();
-    toast("Stopped sharing");
+    note("Stopped sharing on this device");
   }
 
-  /* ---------- boot ---------- */
+  /* ---------- boot: adopt incoming ?shop= link, or warm the saved list ---------- */
   async function boot() {
-    // 1) Adopt an incoming shared link (?shop=… or #shop=…).
     let incoming = null;
     try {
       const u = new URL(location.href);
@@ -251,29 +316,53 @@
         incoming = new URLSearchParams(location.hash.replace(/^#/, "")).get("shop");
       }
     } catch (e) {}
-    if (incoming) await Store.set(TOKEN_KEY, incoming);
 
-    // 2) Rejoin any saved room so updates stay live across reloads.
-    const token = await Store.get(TOKEN_KEY);
-    if (token) joinRoom(token);
-
-    // 3) If we arrived via a share link, surface the list right away.
-    if (incoming) setTimeout(() => { try { openShopping(); } catch (e) {} }, 400);
+    if (incoming && UUID_RE.test(incoming)) {
+      shop.isVisitor = true;
+      try { await Store.set(TOKEN_KEY, incoming); } catch (e) {}
+      shop.me = await resolveName();
+      if (await loadList(incoming)) {
+        joinRoom(incoming);
+        setTimeout(() => { try { openShopping(); } catch (e) {} }, 400);
+      }
+    } else {
+      shop.me = await resolveName();
+      let token = null;
+      try { token = await Store.get(TOKEN_KEY); } catch (e) {}
+      if (token && UUID_RE.test(token) && await loadList(token, { silent: true })) joinRoom(token);
+    }
   }
-  function bootOnce() { if (booted) return; booted = true; boot(); }
+  function bootOnce() { if (shop.booted) return; shop.booted = true; setTimeout(boot, 300); }
   document.addEventListener("DOMContentLoaded", bootOnce);
 
-  /* ---------- wiring ---------- */
   // Any element marked data-open-shopping opens the overlay (decoupled entry point).
   document.addEventListener("click", (e) => {
     const t = e.target && e.target.closest && e.target.closest("[data-open-shopping]");
     if (t) { e.preventDefault(); openShopping(); }
   });
 
-  // Expose handlers used by inline onclick in index.html, plus an integration API.
+  /* ---------- integrate the Food-tab actions with the shared list ---------- */
+  // Re-point app.js's inline handlers so the recipe list + tab toggles use the
+  // durable shared list instead of the legacy per-user table.
+  window.toggleShop = function (i) { shopToggle(i); };
+  window.addRecipeToShopping = async function () {
+    const r = state.lastRecipe;
+    if (!r || !r.ingredients) return;
+    const token = await ensureList();
+    if (!token) { note("Couldn't open the list"); return; }
+    if (!shop.me) shop.me = await resolveName();
+    for (const x of r.ingredients) {
+      try { const row = await DB.addSharedItem(token, x.item, x.qty || null, shop.me); if (row && row.id) shop.list.items.push(normItem(row)); } catch (e) {}
+    }
+    render(); mirror(); broadcast();
+    note(r.ingredients.length + " items added to shopping list");
+  };
+
+  // Public handlers used by inline onclick in index.html, plus an integration API.
   Object.assign(window, {
     openShopping, closeShopping, openShareSheet, closeShareSheet,
     shopAdd, shopToggle, shopRemove, shopClearChecked, shopCopyLink, shopStopShare,
+    renameList, changeName,
   });
-  window.Shopping = { open: openShopping, close: closeShopping, share: openShareSheet, refresh: load, join: joinRoom, leave: leaveRoom };
+  window.Shopping = { open: openShopping, close: closeShopping, share: openShareSheet, refresh: () => loadList(shop.token, { silent: true }) };
 })();
