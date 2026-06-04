@@ -162,7 +162,7 @@
       </section>
 
       <button id="manualKetoneBtn" onclick="manualKetone()" class="hidden w-full mb-space-6 py-space-3 rounded-full bg-soft-mint text-primary font-body-sm active:scale-95 transition inline-flex items-center justify-center gap-2">
-        <span class="material-symbols-outlined text-[18px]">edit</span> Enter a ketone reading manually</button>
+        <span class="text-[16px]" aria-hidden="true">✏️</span> Enter a ketone reading manually</button>
 
       <div id="logResult" class="hidden mb-space-6"></div>
 
@@ -231,13 +231,13 @@
   <!-- ============ BOTTOM NAV ============ -->
   <nav id="bottomNav" class="hidden shrink-0 z-50 flex justify-around items-center px-space-2 pb-space-6 pt-space-2 bg-surface-container-lowest rounded-t-xl">
     <a onclick="switchView('recipes')" id="nav-recipes" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
-      <span class="material-symbols-outlined">menu_book</span><span class="font-caption text-caption">RECIPES</span></a>
+      <span class="material-symbols-outlined">nutrition</span><span class="font-caption text-caption">RECIPES</span></a>
     <a onclick="switchView('chat')" id="nav-chat" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
       <span class="material-symbols-outlined">chat_bubble</span><span class="font-caption text-caption">CHAT</span></a>
     <a onclick="switchView('log')" id="nav-log" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
       <span class="material-symbols-outlined">photo_camera</span><span class="font-caption text-caption">LOG</span></a>
     <a onclick="switchView('plan')" id="nav-plan" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
-      <span class="material-symbols-outlined">calendar_month</span><span class="font-caption text-caption">PLAN</span></a>
+      <span class="material-symbols-outlined">auto_stories</span><span class="font-caption text-caption">PLAN</span></a>
     <a onclick="switchView('more')" id="nav-more" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
       <span class="material-symbols-outlined">more_horiz</span><span class="font-caption text-caption">MORE</span></a>
   </nav>
@@ -317,6 +317,34 @@
       <p class="font-body-base text-text-muted leading-relaxed mb-space-8">Qetos provides general wellness and educational information — not medical advice, diagnosis, or treatment. It is not a substitute for your physician or prescriber. Never change medications based on the app. If you're in crisis, call or text 988 (US). By continuing you agree this is informational only.</p>
       <button onclick="acceptConsent()" class="action-pill w-full bg-primary text-on-primary rounded-full py-space-4 px-space-6 font-body-base font-semibold mb-space-4">I understand &amp; agree</button>
       <p class="font-caption text-text-muted">Read our <a class="underline" href="#">Terms</a> and <a class="underline" href="#">Privacy Policy</a>.</p>
+    </div>
+  </div>
+
+  <!-- ============ LDL STATUS INFO SHEET ============ -->
+  <div id="ldlSheet" class="hidden absolute inset-0 z-[75] flex items-end justify-center" role="dialog" aria-modal="true" aria-label="What the LDL status means">
+    <div onclick="closeLdlInfo()" class="absolute inset-0 bg-primary/30" style="backdrop-filter:blur(2px)"></div>
+    <div class="relative w-full max-w-md bg-background-base rounded-t-[28px] p-space-6 pb-space-8 reveal" style="box-shadow:0 -8px 40px rgba(7,24,52,.18)">
+      <div class="w-10 h-1.5 rounded-full bg-outline-variant mx-auto mb-space-4"></div>
+      <div class="flex items-center justify-between mb-space-2">
+        <h3 class="font-display-lg text-display-lg text-primary">What the LDL tag means</h3>
+        <button onclick="closeLdlInfo()" aria-label="Close" class="w-9 h-9 rounded-full bg-surface-container-lowest text-primary grid place-items-center active:scale-95 transition"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <p class="font-body-sm text-text-muted mb-space-4">A quick, plain-language guide to the tag we show on each meal — based on the kinds of fats and fiber a food contains.</p>
+      <div class="space-y-space-3">
+        <div class="bg-soft-mint rounded-[20px] p-space-4">
+          <div class="flex items-center gap-2 mb-1"><span class="w-6 h-6 rounded-full bg-accent-teal grid place-items-center"><span class="text-[15px] font-semibold text-primary" aria-hidden="true">↓</span></span><p class="font-body-base text-primary font-semibold">LDL-lowering <span class="font-caption text-text-muted">(“removing”)</span></p></div>
+          <p class="font-body-sm text-text-muted">Foods generally associated with a friendlier LDL profile — soluble fiber, unsaturated fats (olive oil, avocado), omega-3s (fatty fish), nuts &amp; seeds.</p>
+        </div>
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-[20px] p-space-4">
+          <div class="flex items-center gap-2 mb-1"><span class="w-6 h-6 rounded-full bg-soft-mint grid place-items-center"><span class="text-[15px] font-semibold text-primary" aria-hidden="true">↔</span></span><p class="font-body-base text-primary font-semibold">LDL-neutral</p></div>
+          <p class="font-body-sm text-text-muted">Little measurable effect either way for most people — most non-starchy vegetables, eggs, and lean proteins.</p>
+        </div>
+        <div class="bg-accent-orange/20 rounded-[20px] p-space-4">
+          <div class="flex items-center gap-2 mb-1"><span class="w-6 h-6 rounded-full bg-accent-orange/70 grid place-items-center"><span class="text-[15px] font-semibold text-primary" aria-hidden="true">↑</span></span><p class="font-body-base text-primary font-semibold">LDL-boosting <span class="font-caption text-text-muted">(raises LDL)</span></p></div>
+          <p class="font-body-sm text-text-muted">Foods higher in saturated &amp; trans fats — fatty cuts of red meat, butter, and processed or fried foods — tend to raise LDL for many people.</p>
+        </div>
+      </div>
+      <p class="font-caption text-text-muted mt-space-4">Qetos provides general wellness and educational information — not medical advice, diagnosis, or treatment. Individual responses vary.</p>
     </div>
   </div>
 

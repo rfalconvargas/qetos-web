@@ -340,8 +340,13 @@ async function runShutter(){
 function impactBadge(v){
   const map = { lowers_ldl:["LDL-lowering","bg-accent-teal"], raises_ldl:["raises LDL","bg-accent-orange/60"], neutral:["LDL-neutral","bg-soft-mint"] };
   const e = map[v]; if(!e) return "";
-  return `<span class="font-caption px-space-3 py-1 rounded-full ${e[1]} text-primary">${e[0]}</span>`;
+  return `<span class="inline-flex items-center gap-1 shrink-0">
+    <span class="font-caption px-space-3 py-1 rounded-full ${e[1]} text-primary">${e[0]}</span>
+    <button onclick="openLdlInfo()" aria-label="What does the LDL status mean?" title="What does this mean?" class="w-6 h-6 rounded-full bg-soft-mint text-primary grid place-items-center active:scale-90 transition"><span class="material-symbols-outlined text-[16px]">info</span></button>
+  </span>`;
 }
+function openLdlInfo(){ const s=$("ldlSheet"); if(s){ s.classList.remove("hidden"); try{ haptic(); }catch(e){} } }
+function closeLdlInfo(){ const s=$("ldlSheet"); if(s) s.classList.add("hidden"); }
 function renderVision(mode, r){
   if(mode==="food"){
     return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal">
@@ -399,7 +404,7 @@ function renderKetone(r, editing){
   }
   const val = (r.bhb_mmol!=null) ? r.bhb_mmol+" <span class='font-body-sm text-text-muted'>mmol BHB</span>"
             : (r.glucose_mgdl!=null) ? r.glucose_mgdl+" <span class='font-body-sm text-text-muted'>mg/dL</span>" : "—";
-  const editBtn = r._saved ? "" : `<button onclick="editKetone()" aria-label="Edit reading manually" title="Edit reading" class="w-9 h-9 rounded-full bg-soft-mint text-primary grid place-items-center active:scale-90 transition shrink-0"><span class="material-symbols-outlined text-[20px]">edit</span></button>`;
+  const editBtn = r._saved ? "" : `<button onclick="editKetone()" aria-label="Edit reading manually" title="Edit reading" class="w-9 h-9 rounded-full bg-soft-mint text-primary grid place-items-center active:scale-90 transition shrink-0"><span class="text-[18px]" aria-hidden="true">✏️</span></button>`;
   return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal text-center">${head}
     <div class="flex items-center justify-center gap-space-3 mb-space-2">
       <p class="font-display-xl text-display-xl text-primary">${val}</p>${editBtn}
@@ -762,7 +767,7 @@ function renderMealEstimate(r, editing){
         <button onclick="renderMealEstimateView()" class="py-space-3 px-space-5 rounded-full bg-soft-mint text-primary font-body-sm active:scale-95 transition">Cancel</button>
        </div>`
     : `<div class="grid grid-cols-3 gap-space-2 text-center mb-space-3">${stat(Math.round(r.kcal||0),"kcal")}${stat((r.net_carbs_g??0)+"g","net carbs")}${stat((r.protein_g??0)+"g","protein")}</div>
-       <button onclick="editMealMacros()" class="w-full py-space-3 rounded-full bg-soft-mint text-primary font-body-sm active:scale-95 transition inline-flex items-center justify-center gap-2 mb-space-4"><span class="material-symbols-outlined text-[18px]">tune</span> Edit macros</button>`;
+       <button onclick="editMealMacros()" class="w-full py-space-3 rounded-full bg-soft-mint text-primary font-body-sm active:scale-95 transition inline-flex items-center justify-center gap-2 mb-space-4"><span class="text-[16px]" aria-hidden="true">✏️</span> Edit macros</button>`;
   return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 reveal">
     <div class="flex items-center gap-2 font-caption text-text-muted uppercase tracking-widest mb-space-4"><span class="material-symbols-outlined text-[16px]">eco</span> Meal · estimated${r.edited?' · edited':''}</div>
     <h4 class="font-display-lg text-display-lg text-primary mb-space-4">${esc(r.name||"Your meal")}</h4>
@@ -806,7 +811,7 @@ function renderFood(){
       <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">Log what you ate</p>
       <p class="font-body-sm text-text-muted mb-space-3">No photo? Type the foods and rough amounts — we'll estimate the macros, and you can fine-tune them.</p>
       <textarea id="mealText" rows="3" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();estimateMeal();}" placeholder="e.g. 2 chicken thighs, 1 zucchini, 1/2 avocado" class="w-full rounded-[20px] bg-white border border-outline-variant p-space-4 font-body-sm text-primary outline-none focus:ring-2 focus:ring-accent-teal editorial-shadow placeholder:text-text-muted"></textarea>
-      <button onclick="estimateMeal()" class="w-full mt-space-3 py-space-4 rounded-full bg-primary text-white font-body-base active:scale-95 transition inline-flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[20px]">calculate</span> Estimate macros</button>
+      <button onclick="estimateMeal()" class="w-full mt-space-3 py-space-4 rounded-full bg-primary text-white font-body-base active:scale-95 transition inline-flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[20px]">auto_awesome</span> Estimate macros</button>
       <div id="mealEstimateOut" class="hidden mt-space-4"></div>
     </section>
     <section class="mb-space-6">
