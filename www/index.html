@@ -185,38 +185,10 @@
 
     <!-- ===== HABITS / DRESS JOURNEY ===== -->
     <section id="view-plan" class="view px-space-8 pb-40 pt-space-2">
-      <!-- Daily history header (date nav + calendar) -->
+      <!-- Plan: one unified daily timeline (date nav + goals + schedule) -->
       <div id="planHeader" class="mb-space-4"></div>
-      <div id="planLog" class="mb-space-8"></div>
-
-      <section class="mb-space-6">
-        <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">DRESS Protocol</p>
-        <h2 class="font-display-lg text-display-lg text-primary mb-space-2">Your Daily Flow</h2>
-        <p class="text-text-muted font-body-sm max-w-xs">A compassionate journey through metabolic and mental harmony. No clocks, no streaks.</p>
-      </section>
-
-      <!-- wins -->
-      <div class="grid grid-cols-2 gap-space-4 mb-space-6">
-        <div class="bg-surface-container-lowest p-space-4 rounded-[24px]">
-          <div class="flex items-center justify-between"><span class="font-caption text-text-muted">CRAVING WINS</span>
-            <button onclick="addWin('craving')" class="w-7 h-7 rounded-full bg-accent-lavender text-primary grid place-items-center active:scale-90 transition"><span class="material-symbols-outlined text-[16px]">add</span></button></div>
-          <p class="font-display-lg text-display-lg text-primary mt-1"><span id="cravingCount">1</span></p>
-          <p class="font-caption text-text-muted">self-compassion</p>
-        </div>
-        <div class="bg-surface-container-lowest p-space-4 rounded-[24px]">
-          <div class="flex items-center justify-between"><span class="font-caption text-text-muted">HABIT WINS</span>
-            <button onclick="addWin('habit')" class="w-7 h-7 rounded-full bg-accent-teal text-primary grid place-items-center active:scale-90 transition"><span class="material-symbols-outlined text-[16px]">add</span></button></div>
-          <p class="font-display-lg text-display-lg text-primary mt-1"><span id="habitCount">3</span></p>
-          <p class="font-caption text-text-muted">quiet resilience</p>
-        </div>
-      </div>
-
-      <div class="bg-soft-mint rounded-[24px] p-space-4 mb-space-6">
-        <p class="font-caption text-text-muted mb-space-3">YOUR GARDEN OF WINS</p>
-        <div id="orbGarden" class="flex flex-wrap gap-3 items-center min-h-[18px]"></div>
-      </div>
-
-      <div id="journey" class="relative"></div>
+      <div id="planGoals" class="mb-space-6"></div>
+      <div id="planTimeline"></div>
     </section>
 
     <!-- ===== MORE ===== -->
@@ -335,6 +307,24 @@
       </div>
       <p class="font-caption text-text-muted mb-space-4">Last 28 days — tap a date to load that day's logs.</p>
       <div id="planCalGrid"></div>
+    </div>
+  </div>
+
+  <!-- ============ PLAN · PANTRY EDITOR ============ -->
+  <div id="pantrySheet" class="hidden absolute inset-0 z-[75] flex items-end justify-center" role="dialog" aria-modal="true" aria-label="Your pantry">
+    <div onclick="closePantry()" class="absolute inset-0 bg-primary/30" style="backdrop-filter:blur(2px)"></div>
+    <div class="relative w-full max-w-md bg-background-base rounded-t-[28px] p-space-6 pb-space-8 reveal" style="box-shadow:0 -8px 40px rgba(7,24,52,.18)">
+      <div class="w-10 h-1.5 rounded-full bg-outline-variant mx-auto mb-space-4"></div>
+      <div class="flex items-center justify-between mb-space-2">
+        <h3 class="font-display-lg text-display-lg text-primary">Your pantry</h3>
+        <button onclick="closePantry()" aria-label="Close" class="w-9 h-9 rounded-full bg-surface-container-lowest text-primary grid place-items-center active:scale-95 transition"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <p class="font-caption text-text-muted mb-space-4">What's on hand — your meal-prep goals are built from this.</p>
+      <div id="pantryList" class="flex flex-wrap gap-2 mb-space-4"></div>
+      <div class="flex gap-space-2">
+        <input id="pantryInput" type="text" placeholder="Add an ingredient…" onkeydown="if(event.key==='Enter'){event.preventDefault();addPantryItem();}" class="flex-1 rounded-full bg-surface-container-lowest border border-outline-variant py-space-3 px-space-5 font-body-sm text-primary outline-none focus:ring-2 focus:ring-accent-teal"/>
+        <button onclick="addPantryItem()" class="w-12 h-12 rounded-full bg-primary text-white grid place-items-center active:scale-90 transition shrink-0"><span class="material-symbols-outlined">add</span></button>
+      </div>
     </div>
   </div>
 

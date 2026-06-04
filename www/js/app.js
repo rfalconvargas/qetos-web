@@ -377,32 +377,135 @@ function planShiftDay(delta){
   if(d>today) return;   // no future history
   state.planDate=d; renderPlanHeader(); loadPlanDay();
 }
-async function loadPlanDay(){
-  const log=$("planLog"); if(!log) return;
-  if(!state.planDate) state.planDate=startOfDay(new Date());
-  log.innerHTML = `<p class="font-body-sm text-text-muted">Loading…</p>`;
-  let meals=[];
-  if(DB.ready() && DB.currentUser()){
-    try{ meals = await DB.listMealsByDay(ymd(state.planDate)); }catch(e){ console.warn("listMealsByDay:", e); }
-  }
-  log.innerHTML = renderPlanLog(meals);
+// Secondary lifestyle goals the user can toggle into the day (custom task module).
+const LIFESTYLE_TASKS = [
+  { id:"meditate", label:"Meditate",        emoji:"🧘", part:"morning" },
+  { id:"daylight", label:"Morning daylight", emoji:"☀️", part:"morning" },
+  { id:"workout",  label:"Workout",          emoji:"🏋️", part:"afternoon" },
+  { id:"read",     label:"Read",             emoji:"📖", part:"evening" },
+  { id:"bed10",    label:"Bed by 10 PM",     emoji:"🌙", part:"evening" },
+];
+
+async function loadPlanPrefs(){
+  try { const p = await Store.get("qetos-pantry"); state.pantry = p ? JSON.parse(p) : ["Wild salmon","Eggs","Avocado","Spinach","Olive oil"]; }
+  catch(e){ state.pantry = ["Wild salmon","Eggs","Avocado","Spinach","Olive oil"]; }
+  try { const t = await Store.get("qetos-tasks"); state.tasks = t ? JSON.parse(t) : { meditate:true, bed10:true }; }
+  catch(e){ state.tasks = { meditate:true, bed10:true }; }
 }
-function renderPlanLog(meals){
-  if(!meals || !meals.length){
-    return `<div class="bg-surface-container-lowest rounded-[24px] p-space-6 text-center">
-      <p class="font-body-sm text-text-muted">No meals logged on this day.</p>
-      <button onclick="switchView('recipes')" class="mt-space-3 font-caption text-primary inline-flex items-center gap-1 active:scale-95 transition">Log a meal <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button>
-    </div>`;
+function savePantry(){ Store.set("qetos-pantry", JSON.stringify(state.pantry||[])); }
+function saveTasks(){ Store.set("qetos-tasks", JSON.stringify(state.tasks||{})); }
+
+// Intended meal-prep / cooking goals derived from what's in the pantry.
+function pantryPrepGoals(){
+  const p = (state.pantry||[]).filter(Boolean);
+  if(!p.length) return [];
+  const lc = p.map(x=>x.toLowerCase());
+  const match = RECIPE_IDEAS.find(r => lc.some(it => r.toLowerCase().includes(it.split(" ")[0])));
+  return [
+    { part:"morning", emoji:"🧑‍🍳", title:"Plan & prep a meal", sub:"From your pantry: " + p.slice(0,3).join(", ") },
+    { part:"evening", emoji:"🍳", title: match ? ("Cook: " + match) : "Cook a keto dinner", sub: match ? "Pantry-friendly tonight" : ("Use: " + p.slice(0,3).join(", ")) },
+  ];
+}
+
+function partOf(d){ if(!d) return "morning"; const h=d.getHours(); return h<12 ? "morning" : h<17 ? "afternoon" : "evening"; }
+
+function timelineRow(it){
+  const time = it.time ? it.time.toLocaleTimeString([], { hour:"numeric", minute:"2-digit" }) : "";
+  const bg = it.kind==="task" ? "bg-accent-lavender/40" : it.kind==="prep" ? "bg-soft-mint" : "bg-surface-container-lowest";
+  return `<div class="flex items-center gap-space-3 ${bg} rounded-[16px] p-space-3">
+    <span class="text-[20px] shrink-0" aria-hidden="true">${it.emoji}</span>
+    <div class="flex-1 min-w-0"><p class="font-body-base text-primary truncate">${esc(it.title)}</p>${it.sub?`<p class="font-caption text-text-muted truncate">${esc(it.sub)}</p>`:""}</div>
+    ${time?`<span class="font-caption text-text-muted shrink-0">${time}</span>`:""}</div>`;
+}
+
+function renderPlanTimeline(meals, ketones){
+  const el=$("planTimeline"); if(!el) return;
+  const parts = {
+    morning:{ label:"Morning", emoji:"🌅", items:[] },
+    afternoon:{ label:"Afternoon", emoji:"🌤️", items:[] },
+    evening:{ label:"Evening", emoji:"🌙", items:[] },
+  };
+  // enabled lifestyle tasks → their part of day
+  LIFESTYLE_TASKS.forEach(t => { if(state.tasks && state.tasks[t.id]) parts[t.part].items.push({ kind:"task", time:null, emoji:t.emoji, title:t.label, sub:"Lifestyle goal" }); });
+  // pantry-based meal-prep / cooking goals
+  pantryPrepGoals().forEach(g => parts[g.part].items.push({ kind:"prep", time:null, emoji:g.emoji, title:g.title, sub:g.sub }));
+  // logged meals
+  (meals||[]).forEach(m => { const d = m.created_at ? new Date(m.created_at) : null;
+    parts[partOf(d)].items.push({ kind:"meal", time:d, emoji:foodEmoji(m.name||""), title:m.name||"Meal",
+      sub:[m.kcal?`${Math.round(m.kcal)} kcal`:"", (m.net_carbs_g!=null)?`${m.net_carbs_g}g net carbs`:""].filter(Boolean).join(" · ") }); });
+  // logged ketone readings
+  (ketones||[]).forEach(k => { const d = k.created_at ? new Date(k.created_at) : null;
+    const val = (k.bhb_mmol!=null) ? `${k.bhb_mmol} mmol BHB` : (k.glucose_mgdl!=null) ? `${k.glucose_mgdl} mg/dL` : "Ketone reading";
+    parts[partOf(d)].items.push({ kind:"ketone", time:d, emoji:"🩸", title:val, sub:(k.gki!=null)?`GKI ${k.gki}`:"Ketone reading" }); });
+
+  let html = "";
+  for(const key of ["morning","afternoon","evening"]){
+    const p = parts[key];
+    p.items.sort((a,b)=> (a.time&&b.time) ? a.time-b.time : a.time ? 1 : b.time ? -1 : 0);
+    html += `<section class="mb-space-6">
+      <div class="flex items-center gap-2 mb-space-3"><span class="text-[16px]" aria-hidden="true">${p.emoji}</span><h3 class="font-headline-md text-headline-md text-primary">${p.label}</h3></div>
+      ${p.items.length ? `<div class="space-y-space-2">${p.items.map(timelineRow).join("")}</div>` : `<p class="font-body-sm text-text-muted ml-1">Nothing here yet.</p>`}
+    </section>`;
   }
-  return `<div class="space-y-space-3">${meals.map(m=>{
-    const t = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour:"numeric", minute:"2-digit" }) : "";
-    const meta = [t, m.kcal?`${Math.round(m.kcal)} kcal`:"", (m.net_carbs_g!=null)?`${m.net_carbs_g}g net carbs`:""].filter(Boolean).join(" · ");
-    return `<div class="bg-surface-container-lowest rounded-[20px] p-space-4 flex items-center gap-space-3">
-      <span class="text-[22px] shrink-0" aria-hidden="true">${foodEmoji(m.name||"")}</span>
-      <div class="flex-1 min-w-0"><p class="font-body-base text-primary truncate">${esc(m.name||"Meal")}</p>
-        <p class="font-caption text-text-muted">${esc(meta)}</p></div>
-    </div>`;
-  }).join("")}</div>`;
+  el.innerHTML = html;
+}
+
+function renderPlanGoals(){
+  const el=$("planGoals"); if(!el) return;
+  const chips = LIFESTYLE_TASKS.map(t => {
+    const on = !!(state.tasks && state.tasks[t.id]);
+    return `<button onclick="toggleTask('${t.id}')" aria-pressed="${on}" class="font-caption px-space-3 py-2 rounded-full active:scale-95 transition inline-flex items-center gap-1 ${on?'bg-primary text-white':'bg-soft-mint text-primary'}"><span aria-hidden="true">${t.emoji}</span> ${t.label}${on?' ✓':''}</button>`;
+  }).join("");
+  el.innerHTML = `
+    <div class="flex items-center justify-between mb-space-2">
+      <p class="font-caption text-text-muted uppercase tracking-widest">Daily goals</p>
+      <button onclick="openPantry()" class="font-caption text-primary inline-flex items-center gap-1 active:scale-95 transition">Pantry <span class="material-symbols-outlined text-[16px]">chevron_right</span></button>
+    </div>
+    <div class="flex flex-wrap gap-2">${chips}</div>`;
+}
+function toggleTask(id){
+  if(!state.tasks) state.tasks = {};
+  state.tasks[id] = !state.tasks[id];
+  saveTasks();
+  renderPlanGoals();
+  renderPlanTimeline(state._planMeals||[], state._planKetones||[]);
+}
+
+async function loadPlanDay(){
+  const el=$("planTimeline"); if(!el) return;
+  if(!state.planDate) state.planDate = startOfDay(new Date());
+  if(!state.tasks || !state.pantry) await loadPlanPrefs();
+  el.innerHTML = `<p class="font-body-sm text-text-muted">Loading…</p>`;
+  let meals=[], ketones=[];
+  if(DB.ready() && DB.currentUser()){
+    try{ meals = await DB.listMealsByDay(ymd(state.planDate)); }catch(e){ console.warn("meals:", e); }
+    try{ ketones = await DB.listKetonesByDay(ymd(state.planDate)); }catch(e){ console.warn("ketones:", e); }
+  }
+  state._planMeals = meals; state._planKetones = ketones;
+  renderPlanGoals();
+  renderPlanTimeline(meals, ketones);
+}
+
+/* ---------- pantry editor ---------- */
+function openPantry(){ const o=$("pantrySheet"); if(!o) return; renderPantry(); o.classList.remove("hidden"); }
+function closePantry(){ const o=$("pantrySheet"); if(o) o.classList.add("hidden"); }
+function renderPantry(){
+  const grid=$("pantryList"); if(!grid) return;
+  const items = state.pantry||[];
+  grid.innerHTML = items.length
+    ? items.map((it,i)=>`<span class="inline-flex items-center gap-1 bg-soft-mint text-primary rounded-full px-space-3 py-2 font-caption">${esc(it)} <button onclick="removePantryItem(${i})" aria-label="Remove ${esc(it)}" class="text-text-muted active:scale-90">✕</button></span>`).join("")
+    : `<p class="font-body-sm text-text-muted">Your pantry is empty — add what you have on hand.</p>`;
+}
+function addPantryItem(){
+  const inp=$("pantryInput"); const v=(inp&&inp.value||"").trim(); if(!v) return;
+  if(!state.pantry) state.pantry=[];
+  if(!state.pantry.some(x=>x.toLowerCase()===v.toLowerCase())) state.pantry.push(v);
+  inp.value=""; savePantry(); renderPantry();
+  renderPlanTimeline(state._planMeals||[], state._planKetones||[]);
+}
+function removePantryItem(i){
+  if(!state.pantry) return; state.pantry.splice(i,1); savePantry(); renderPantry();
+  renderPlanTimeline(state._planMeals||[], state._planKetones||[]);
 }
 function openPlanCalendar(){ const o=$("planCalendar"); if(!o) return; renderPlanCalendar(); o.classList.remove("hidden"); }
 function closePlanCalendar(){ const o=$("planCalendar"); if(o) o.classList.add("hidden"); }
@@ -652,6 +755,7 @@ const dress = [
 ];
 
 function renderJourney(){
+  if(!$("journey")) return;   // DRESS journey retired from the Plan tab
   let html = `<div class="journey-path"></div>`;
   dress.forEach(d => {
     if(d.phase){
@@ -690,8 +794,8 @@ function toggleHabit(id, e){
 }
 
 function addWin(type, silent){
-  if(type === "craving"){ state.cravingWins++; $("cravingCount").textContent = state.cravingWins; }
-  else { state.habitWins++; $("habitCount").textContent = state.habitWins; }
+  if(type === "craving"){ state.cravingWins++; const el=$("cravingCount"); if(el) el.textContent = state.cravingWins; }
+  else { state.habitWins++; const el=$("habitCount"); if(el) el.textContent = state.habitWins; }
   addOrb(); saveState();
   if(!silent) toast((type==="craving"?"Craving":"Habit") + " win logged · with compassion");
 }
@@ -1040,8 +1144,8 @@ async function loadState(){
     const raw = await Store.get("qetos-state"); if(!raw) return;
     const s = JSON.parse(raw);
     if(s.energy){ state.energy = s.energy; $("energyBar").style.width = s.energy+"%"; $("energyVal").textContent = s.energy; }
-    if(typeof s.cravingWins==="number"){ state.cravingWins = s.cravingWins; $("cravingCount").textContent = s.cravingWins; }
-    if(typeof s.habitWins==="number"){ state.habitWins = s.habitWins; $("habitCount").textContent = s.habitWins; }
+    if(typeof s.cravingWins==="number"){ state.cravingWins = s.cravingWins; const el=$("cravingCount"); if(el) el.textContent = s.cravingWins; }
+    if(typeof s.habitWins==="number"){ state.habitWins = s.habitWins; const el=$("habitCount"); if(el) el.textContent = s.habitWins; }
     if(s.connections) state.connections = s.connections;
     if(Array.isArray(s.done)) dress.forEach(d => d.done = s.done.includes(d.id));
   } catch(e){}
@@ -1092,6 +1196,7 @@ async function init(){
   await checkConsent();
   await loadState();
   await loadProfile();
+  await loadPlanPrefs();
   renderJourney(); renderSettings(); renderFood(); renderPlanHeader();
   const total = state.cravingWins + state.habitWins; for(let i=0;i<total;i++) addOrb();
   // real Supabase session (e.g. returning from a magic link) logs in + seeds

@@ -76,6 +76,16 @@ window.DB = (function () {
   async function addLabReport(r) { return sb.from("lab_reports").insert({ ...r, user_id: user.id }).select().single(); }
   async function addLabMetrics(reportId, metrics) { if (!metrics || !metrics.length) return; return sb.from("lab_metrics").insert(metrics.map(x => ({ metric: x.metric, value: x.value, unit: x.unit, flag: x.flag, report_id: reportId, user_id: user.id }))); }
   async function saveDaily(d) { return sb.from("daily_logs").upsert({ ...d, user_id: user.id }); }
+  // Ketone readings on a given local day (dayISO = "YYYY-MM-DD"), oldest first.
+  async function listKetonesByDay(dayISO) {
+    if (!user) return [];
+    const start = new Date(dayISO + "T00:00:00");
+    const end = new Date(start); end.setDate(end.getDate() + 1);
+    const { data } = await sb.from("ketone_readings").select("*").eq("user_id", user.id)
+      .gte("created_at", start.toISOString()).lt("created_at", end.toISOString())
+      .order("created_at", { ascending: true });
+    return data || [];
+  }
   // Meals logged on a given local day (dayISO = "YYYY-MM-DD"), oldest first.
   async function listMealsByDay(dayISO) {
     if (!user) return [];
@@ -108,7 +118,7 @@ window.DB = (function () {
 
   return { init, ready, getSession, onAuth, signInWithEmail, signInWithPhone, verifyPhone,
     signInWithProvider, signOut, currentUser, getProfile, upsertProfile, getTargets, saveTargets,
-    listSupplements, setSupplements, addMeal, listMealsByDay, addKetone, addWin, listWins, addLabReport, addLabMetrics, saveDaily,
+    listSupplements, setSupplements, addMeal, listMealsByDay, addKetone, listKetonesByDay, addWin, listWins, addLabReport, addLabMetrics, saveDaily,
     addShoppingItem, listShopping, setShoppingChecked,
     saveMessage, recentMessages, addMemory, completeOnboarding };
 })();
