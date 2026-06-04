@@ -2526,6 +2526,8 @@ class WaitlistForm {
         this.button.textContent = "Join the waitlist";
       }
     } catch (err) {
+      // Surface the real cause in DevTools (e.g. a blocking extension, offline).
+      console.error("[waitlist] submit failed:", err);
       this.showError("Network error — please check your connection and try again.");
       this.button.disabled = false;
       this.button.textContent = "Join the waitlist";
