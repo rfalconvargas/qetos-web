@@ -17,12 +17,67 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 const onCapacitor = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+// Escape a value for safe interpolation into an HTML attribute (value="...").
+const escAttr = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /* ---------- lightweight persistence ---------- */
 const Store = {
   async get(k){ try{ if(onCapacitor() && window.Capacitor.Plugins.Preferences){ const {value}=await window.Capacitor.Plugins.Preferences.get({key:k}); return value;} return localStorage.getItem(k);}catch(e){return null;} },
   async set(k,v){ try{ if(onCapacitor() && window.Capacitor.Plugins.Preferences){ await window.Capacitor.Plugins.Preferences.set({key:k,value:v}); return;} localStorage.setItem(k,v);}catch(e){} },
+  async remove(k){ try{ if(onCapacitor() && window.Capacitor.Plugins.Preferences){ await window.Capacitor.Plugins.Preferences.remove({key:k}); return;} localStorage.removeItem(k);}catch(e){} },
 };
+
+/* ---------- profile persistence (Preferred name / Age / Primary focus) ----------
+   Source of truth for the Profile settings screen. Persisted via Store, which
+   uses Capacitor Preferences on device (and localStorage on web) — both survive
+   an app restart. When signed in we also best-effort mirror to Supabase. */
+const PROFILE_KEY = "qetos-profile";
+const PROFILE_DEFAULTS = { preferred_name: "Raul", age: 41, primary_focus: "Metabolic + cognitive longevity" };
+
+async function loadProfile(){
+  try {
+    const raw = await Store.get(PROFILE_KEY);
+    state.profile = raw ? { ...PROFILE_DEFAULTS, ...JSON.parse(raw) } : { ...PROFILE_DEFAULTS };
+  } catch(e){ console.warn("loadProfile:", e); state.profile = { ...PROFILE_DEFAULTS }; }
+  const n = String(state.profile.preferred_name || "").trim();
+  if (n) state.firstName = n.split(/\s+/)[0];
+  return state.profile;
+}
+
+async function saveProfile(form){
+  const nameEl = form.querySelector("#pf-name");
+  const ageEl  = form.querySelector("#pf-age");
+  const focusEl = form.querySelector("#pf-focus");
+
+  const preferred_name = (nameEl?.value || "").trim();
+  const primary_focus  = (focusEl?.value || "").trim();
+  const age = parseInt((ageEl?.value || "").trim(), 10);
+
+  // Validate before committing so we never persist garbage.
+  if (!preferred_name) { toast("Please enter a preferred name"); nameEl?.focus(); return; }
+  if (!Number.isFinite(age) || age < 13 || age > 120) { toast("Please enter a valid age (13–120)"); ageEl?.focus(); return; }
+
+  const btn = form.querySelector('button[type="submit"]') || form.querySelector("button");
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+
+  state.profile = { ...(state.profile || PROFILE_DEFAULTS), preferred_name, age, primary_focus };
+
+  // 1) Commit locally — guaranteed to persist across restarts.
+  await Store.set(PROFILE_KEY, JSON.stringify(state.profile));
+
+  // 2) Best-effort remote sync when signed in (failure never breaks the local save).
+  if (DB.ready() && DB.currentUser()) {
+    try { await DB.upsertProfile({ full_name: preferred_name, age }); }
+    catch (e) { console.warn("profile remote sync:", e); }
+  }
+
+  // Reflect the new name in the Concierge greeting immediately.
+  state.firstName = preferred_name.split(/\s+/)[0];
+
+  if (btn) { btn.disabled = false; btn.textContent = "Save profile"; }
+  try { haptic(); } catch(e){}
+  toast("Profile saved");
+}
 
 /* ===================== AUTH ===================== */
 // User #1 onboarding seed (you). Targets computed from your stats:
@@ -164,7 +219,7 @@ function quickAction(type){
   if(type === "next"){
     appendChat(userBubble("What's next?"));
     sayFrom(Promise.resolve(`Your next gentle step is a <b>5-minute breathing reset</b> — your afternoon is the perfect window. After that, a short brain-focused training set if you have the energy.` +
-      `<div class="mt-space-3 flex gap-space-2 flex-wrap"><button onclick="startBreathing()" class="bg-primary text-white py-3 px-6 rounded-full font-body-sm active:scale-95 transition inline-flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">air</span> Begin reset</button><button onclick="switchView('habits')" class="bg-white border border-soft-mint py-3 px-6 rounded-full font-body-sm text-primary active:scale-95 transition">See full path</button></div>`));
+      `<div class="mt-space-3 flex gap-space-2 flex-wrap"><button onclick="startBreathing()" class="bg-primary text-white py-3 px-6 rounded-full font-body-sm active:scale-95 transition inline-flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">air</span> Begin reset</button><button onclick="switchView('plan')" class="bg-white border border-soft-mint py-3 px-6 rounded-full font-body-sm text-primary active:scale-95 transition">See full path</button></div>`));
   } else if(type === "win"){
     appendChat(userBubble("Log another win")); addWin("habit");
     sayFrom(Promise.resolve(`Logged — that's <b>${state.habitWins}</b> habit wins woven into today. Each is a small vote for the person you're becoming. What was the win, so I can learn your patterns?`), 600);
@@ -436,7 +491,7 @@ function renderSettings(){
       <span class="flex-1 min-w-0"><span class="block font-body-base text-primary">${s.label}</span><span class="block font-caption text-text-muted truncate">${s.sub}</span></span>
       <span class="material-symbols-outlined text-text-muted">chevron_right</span></button>`).join("");
 }
-function openSetting(id){ const s = settings.find(x=>x.id===id); $("settingTitle").textContent = s.label; $("settingBody").innerHTML = settingBody(id); $("settingPanel").classList.add("open"); }
+async function openSetting(id){ const s = settings.find(x=>x.id===id); $("settingTitle").textContent = s.label; if(id==="profile" && !state.profile) await loadProfile(); $("settingBody").innerHTML = settingBody(id); $("settingPanel").classList.add("open"); }
 function closeSetting(){ $("settingPanel").classList.remove("open"); }
 
 function field(label, value, type="text", id=""){
@@ -473,9 +528,9 @@ function settingBody(id){
       <div class="mt-space-4 flex justify-between font-body-sm"><span class="text-text-muted">Plan</span><span class="text-primary">Founders · active</span></div></div>
       <button onclick="toast('Verification link sent to raul@rfalcon.com')" class="w-full py-space-4 rounded-full bg-soft-mint text-primary font-body-base">Manage email</button>
       <button onclick="signOut()" class="w-full py-space-4 rounded-full bg-primary text-white font-body-base">Sign out</button></div>`;
-    case "profile": return `<form onsubmit="event.preventDefault(); toast('Profile saved')" class="reveal">
-      ${field("Preferred name","Raul")}${field("Age","41","number")}${field("Primary focus","Metabolic + cognitive longevity")}
-      <button class="w-full py-space-4 rounded-full bg-primary text-white font-body-base mt-space-2">Save profile</button></form>`;
+    case "profile": { const pf = state.profile || PROFILE_DEFAULTS; return `<form onsubmit="event.preventDefault(); saveProfile(this)" class="reveal">
+      ${field("Preferred name", escAttr(pf.preferred_name), "text", "pf-name")}${field("Age", escAttr(pf.age), "number", "pf-age")}${field("Primary focus", escAttr(pf.primary_focus), "text", "pf-focus")}
+      <button type="submit" class="w-full py-space-4 rounded-full bg-primary text-white font-body-base mt-space-2">Save profile</button></form>`; }
     case "targets": return `<form onsubmit="event.preventDefault(); toast('Targets updated · Concierge will adapt')" class="reveal">
       ${slider("Net carbs ceiling","carbT",20,"g",5,50)}${slider("Protein target","protT",140,"g",60,220)}${slider("Ketone goal","ketT",1.5,"mmol",0.5,4,0.1)}${slider("Daily daylight","sunT",20,"min",5,60)}
       <button class="w-full py-space-4 rounded-full bg-primary text-white font-body-base">Save targets</button></form>`;
@@ -516,7 +571,7 @@ function renderFood(){
   $("foodBody").innerHTML = `
     <section class="mb-space-6">
       <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">Nutrition</p>
-      <h2 class="font-display-lg text-display-lg text-primary mb-space-2">Food</h2>
+      <h2 class="font-display-lg text-display-lg text-primary mb-space-2">Recipes</h2>
       <p class="font-body-sm text-text-muted">Tuned to your goals — gentler on LDL, steady ketosis.</p>
     </section>
     <section class="mb-space-6">
@@ -718,6 +773,7 @@ async function init(){
   DB.init();
   await checkConsent();
   await loadState();
+  await loadProfile();
   renderJourney(); renderSettings(); renderFood();
   const total = state.cravingWins + state.habitWins; for(let i=0;i<total;i++) addOrb();
   // real Supabase session (e.g. returning from a magic link) logs in + seeds

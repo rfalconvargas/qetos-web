@@ -96,7 +96,7 @@ window.Concierge = (function () {
     const a = answer.toLowerCase();
     if (a.includes("missed"))
       return `That's likely a meaningful piece. Let's gently take the <b>3 therapeutic capsules</b> now and pair them with food. I'll check on your energy this evening — no pressure, just noticing together.` +
-        `<div class="mt-space-3"><button onclick="switchView('habits')" class="bg-primary text-white py-3 px-6 rounded-full font-body-sm active:scale-95 transition inline-flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">medication</span> Open Supplements</button></div>`;
+        `<div class="mt-space-3"><button onclick="switchView('plan')" class="bg-primary text-white py-3 px-6 rounded-full font-body-sm active:scale-95 transition inline-flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">medication</span> Open Supplements</button></div>`;
     if (a.includes("daylight"))
       return `Then a small, kind experiment: <b>10 minutes</b> of morning-style daylight, even by a window. It steadies your circadian rhythm, which steadies energy. Want me to hold a soft reminder for tomorrow?`;
     if (a.includes("paused"))

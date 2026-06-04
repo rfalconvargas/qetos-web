@@ -99,7 +99,7 @@
   <main id="viewport" class="hidden">
 
     <!-- ===== FOOD ===== -->
-    <section id="view-food" class="view px-space-8 pb-40 pt-space-2"><div id="foodBody"></div></section>
+    <section id="view-recipes" class="view px-space-8 pb-40 pt-space-2"><div id="foodBody"></div></section>
 
     <!-- ===== CHAT ===== -->
     <section id="view-chat" class="view active px-space-8 pb-40 pt-space-2">
@@ -181,7 +181,7 @@
     </section>
 
     <!-- ===== HABITS / DRESS JOURNEY ===== -->
-    <section id="view-habits" class="view px-space-8 pb-40 pt-space-2">
+    <section id="view-plan" class="view px-space-8 pb-40 pt-space-2">
       <section class="mb-space-6">
         <p class="font-caption text-text-muted uppercase tracking-widest mb-space-2">DRESS Protocol</p>
         <h2 class="font-display-lg text-display-lg text-primary mb-space-2">Your Daily Flow</h2>
@@ -227,14 +227,14 @@
 
   <!-- ============ BOTTOM NAV ============ -->
   <nav id="bottomNav" class="hidden shrink-0 z-50 flex justify-around items-center px-space-2 pb-space-6 pt-space-2 bg-surface-container-lowest rounded-t-xl">
-    <a onclick="switchView('food')" id="nav-food" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
-      <span class="material-symbols-outlined">grocery</span><span class="font-caption text-caption">FOOD</span></a>
+    <a onclick="switchView('recipes')" id="nav-recipes" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
+      <span class="material-symbols-outlined">menu_book</span><span class="font-caption text-caption">RECIPES</span></a>
     <a onclick="switchView('chat')" id="nav-chat" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
       <span class="material-symbols-outlined">chat_bubble</span><span class="font-caption text-caption">CHAT</span></a>
     <a onclick="switchView('log')" id="nav-log" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
       <span class="material-symbols-outlined">photo_camera</span><span class="font-caption text-caption">LOG</span></a>
-    <a onclick="switchView('habits')" id="nav-habits" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
-      <span class="material-symbols-outlined">auto_stories</span><span class="font-caption text-caption">HABITS</span></a>
+    <a onclick="switchView('plan')" id="nav-plan" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
+      <span class="material-symbols-outlined">calendar_month</span><span class="font-caption text-caption">PLAN</span></a>
     <a onclick="switchView('more')" id="nav-more" class="nav-btn flex flex-col items-center justify-center rounded-full px-space-3 py-space-2 transition-all cursor-pointer">
       <span class="material-symbols-outlined">more_horiz</span><span class="font-caption text-caption">MORE</span></a>
   </nav>
@@ -270,8 +270,6 @@
       <section class="w-full space-y-space-4">
         <button onclick="signIn('Google')" class="action-pill w-full flex items-center justify-center py-space-4 px-space-6 border border-primary bg-surface-container-lowest rounded-full">
           <span class="material-symbols-outlined mr-space-3 text-primary">login</span><span class="font-body-base text-primary font-semibold">Continue with Google</span></button>
-        <button onclick="signIn('Instagram')" class="action-pill w-full flex items-center justify-center py-space-4 px-space-6 bg-accent-lavender rounded-full">
-          <span class="material-symbols-outlined mr-space-3 text-primary">photo_camera</span><span class="font-body-base text-primary font-semibold">Connect with Instagram</span></button>
         <div class="flex items-center py-space-2"><div class="flex-grow border-t border-outline-variant"></div><span class="px-space-4 font-caption text-text-muted">OR</span><div class="flex-grow border-t border-outline-variant"></div></div>
         <div class="space-y-space-3">
           <input id="authEmail" type="text" value="raul@rfalcon.com" class="w-full bg-surface-container-low border-none rounded-full py-space-3 px-space-6 font-body-base focus:ring-2 focus:ring-primary-container placeholder:text-outline" placeholder="Email or Phone Number"/>
