@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/waitlist",
+      "destination": "https://efkantatoxcpcteqthfh.supabase.co/functions/v1/waitlist"
+    }
+  ]
+}

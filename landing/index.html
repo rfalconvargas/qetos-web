@@ -2447,7 +2447,9 @@ class StatsSection {
 new StatsSection();
 
 // === Waitlist Form ===
-const WAITLIST_URL = "https://efkantatoxcpcteqthfh.supabase.co/functions/v1/waitlist";
+// Same-origin proxy (Vercel rewrite in vercel.json -> Supabase edge fn).
+// Same-origin means no CORS/preflight, so it works on every Qetos domain.
+const WAITLIST_URL = "/api/waitlist";
 
 class WaitlistForm {
   constructor() {
