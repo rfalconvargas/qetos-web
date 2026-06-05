@@ -11,6 +11,11 @@
     },
     "Keyboard": {
       "resize": "body"
+    },
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "855044955279-au5quvri32u6nn3tels8c93edueulveq.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
     }
   }
 }

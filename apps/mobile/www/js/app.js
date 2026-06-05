@@ -100,6 +100,21 @@ state.firstName = (ONBOARDING_SEED.full_name || "there").trim().split(/\s+/)[0];
 
 async function signIn(provider){
   const map = { Google: "google", Apple: "apple" };
+  // On device, use the NATIVE Google account picker + ID-token flow. The
+  // in-WebView OAuth redirect is blocked by Google ("disallowed_useragent"),
+  // so signInWithOAuth can't work inside the app.
+  if (provider === "Google" && window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
+    try {
+      const GoogleAuth = Capacitor.registerPlugin("GoogleAuth");
+      const res = await GoogleAuth.signIn();
+      const idToken = res && res.authentication && res.authentication.idToken;
+      if (!idToken) throw new Error("no id token returned");
+      const { error } = await DB.signInWithIdToken("google", idToken);
+      if (error) throw error;
+      return; // DB.onAuth reveals the app + syncs the user
+    } catch (e) { console.warn("native google sign-in:", e); toast("Google sign-in failed — use the email link below"); return; }
+  }
+  // Web (browser) path: standard OAuth redirect.
   if (DB.ready() && map[provider]) {
     try { await DB.signInWithProvider(map[provider]); return; }  // redirects out
     catch (e) { console.warn(e); toast("Enable " + provider + " in Supabase Auth — using demo for now"); }
@@ -1297,6 +1312,23 @@ async function init(){
   // real Supabase session (e.g. returning from a magic link) logs in + seeds
   let session = null; try { session = await DB.getSession(); } catch(e){}
   DB.onAuth(async (s) => { if (s) { revealApp(); await syncUser(); } });
+  // Native deep-link return (magic-link / OAuth) → finish the Supabase session.
+  try {
+    if (onCapacitor() && window.Capacitor.Plugins.App) {
+      window.Capacitor.Plugins.App.addListener("appUrlOpen", async (data) => {
+        const url = (data && data.url) || "";
+        if (url.indexOf("login-callback") === -1) return;
+        try {
+          const sb = DB.init();
+          let code = null; try { code = new URL(url).searchParams.get("code"); } catch (_) {}
+          const frag = url.indexOf("#") !== -1 ? url.slice(url.indexOf("#") + 1) : "";
+          const fp = new URLSearchParams(frag);
+          if (code) await sb.auth.exchangeCodeForSession(code);
+          else if (fp.get("access_token") && fp.get("refresh_token")) await sb.auth.setSession({ access_token: fp.get("access_token"), refresh_token: fp.get("refresh_token") });
+        } catch (e) { console.warn("auth deep-link:", e); toast("Couldn't complete the sign-in link"); }
+      });
+    }
+  } catch (e) {}
   const authed = await Store.get("qetos-auth");
   if (session || authed === "1") {
     $("auth").style.display = "none"; $("appHeader").classList.remove("hidden"); $("viewport").classList.remove("hidden"); $("bottomNav").classList.remove("hidden"); switchView("chat");

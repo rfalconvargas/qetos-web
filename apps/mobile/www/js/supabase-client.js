@@ -37,7 +37,11 @@ window.DB = (function () {
   // Email magic link works out-of-the-box (Supabase default mailer).
   async function signInWithEmail(email) {
     if (!ready()) throw new Error("offline");
-    return sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
+    // On device, send the magic link back via a custom-scheme deep link so it
+    // reopens the app (https://localhost can't return to the WebView).
+    const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    const emailRedirectTo = native ? "com.ketofy.app://login-callback" : window.location.origin;
+    return sb.auth.signInWithOtp({ email, options: { emailRedirectTo } });
   }
   // Phone OTP requires an SMS provider (Twilio etc.) enabled in the dashboard.
   async function signInWithPhone(phone) {
@@ -51,6 +55,12 @@ window.DB = (function () {
   async function signInWithProvider(provider) {
     if (!ready()) throw new Error("offline");
     return sb.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.origin } });
+  }
+  // Native sign-in: exchange a Google ID token (from the native account picker)
+  // for a Supabase session. No client secret needed for this flow.
+  async function signInWithIdToken(provider, token, nonce) {
+    if (!ready()) throw new Error("offline");
+    return sb.auth.signInWithIdToken({ provider, token, nonce });
   }
   async function signOut() { if (ready()) await sb.auth.signOut(); user = null; }
   function currentUser() { return user; }
@@ -173,7 +183,7 @@ window.DB = (function () {
   }
 
   return { init, ready, getSession, onAuth, signInWithEmail, signInWithPhone, verifyPhone,
-    signInWithProvider, signOut, currentUser, getProfile, upsertProfile, getTargets, saveTargets,
+    signInWithProvider, signInWithIdToken, signOut, currentUser, getProfile, upsertProfile, getTargets, saveTargets,
     listSupplements, setSupplements, addMeal, listMealsByDay, addKetone, listKetonesByDay, addWin, listWins, addLabReport, addLabMetrics, saveDaily,
     addShoppingItem, listShopping, setShoppingChecked,
     createSharedList, getSharedList, addSharedItem, setSharedChecked, removeSharedItem,
