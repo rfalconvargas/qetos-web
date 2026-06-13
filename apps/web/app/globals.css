@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Qetos design tokens — calm, premium, navy + warm off-white.
+ * Glass technique adapted from the Ailiur ecosystem, re-tokened.
+ * ------------------------------------------------------------------ */
+@theme inline {
+  --color-bg: #fbf9f6;
+  --color-navy: #071834;
+  --color-navy-soft: #1e2d4a;
+  --color-text: #1e2d4a;
+  --color-text-muted: #5a6e85;
+  --color-mint: #e8f0ec;
+  --color-teal: #cbe7e3;
+  --color-lavender: #e3e0f2;
+  --color-orange: #f5a97e;
+  --color-glow: #f7d070;
+
+  --font-display: var(--font-playfair);
+  --font-sans: var(--font-inter);
+
+  --radius-card: 24px;
+  --radius-panel: 32px;
+
+  --text-display: clamp(2.75rem, 7vw, 5rem);
+  --text-display--line-height: 1.02;
+  --text-h1: clamp(2rem, 4.5vw, 3.25rem);
+  --text-h1--line-height: 1.08;
+  --text-h2: clamp(1.6rem, 3vw, 2.25rem);
+  --text-h2--line-height: 1.15;
+}
+
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.74);
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-shadow: 0 8px 32px rgba(7, 24, 52, 0.1);
+  --glass-shadow-lg: 0 24px 60px rgba(7, 24, 52, 0.16);
+  --shadow-soft: 0 2px 10px rgba(7, 24, 52, 0.06);
+  --shadow-pop: 0 14px 36px rgba(7, 24, 52, 0.18);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100%;
+    color: var(--color-text);
+    font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+    background-color: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Static gradient field on its own fixed layer (avoids the
+     background-attachment: fixed screenshot/compositing hang). */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      radial-gradient(
+        120% 90% at 50% -20%,
+        #ffffff 0%,
+        var(--color-bg) 42%,
+        var(--color-mint) 100%
+      );
+  }
+
+  ::selection {
+    background: var(--color-glow);
+    color: var(--color-navy);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Glass surfaces
+ * ------------------------------------------------------------------ */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.glass-strong {
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+}
+
+/* A subtle top-light highlight that sells the Apple-glass look. */
+.glass-lit {
+  position: relative;
+}
+.glass-lit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0) 40%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Soft animated star-glow used for "Bloom" win moments. */
+@keyframes bloom {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+.animate-bloom {
+  animation: bloom 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
