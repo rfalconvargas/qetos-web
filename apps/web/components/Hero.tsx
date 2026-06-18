@@ -1,11 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles, Sun, Moon, Utensils, Activity, ChevronRight } from "lucide-react";
+import { Sparkles, Sun, Moon, Utensils, Activity, ChevronRight, ArrowUpRight } from "lucide-react";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 import { PhonePanel, AmbientGlow } from "./ui/Card";
 import { container, fadeUp, easeOut } from "./motion";
+import { PRODUCT_FEEDBACK_URL } from "@/lib/feedback";
 
 const WINDOW_CARDS = [
   {
@@ -70,6 +71,15 @@ export function Hero() {
             <Button href="#system" variant="secondary" size="lg">
               Explore the Product System
             </Button>
+            <a
+              href={PRODUCT_FEEDBACK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-base font-semibold text-navy/80 transition-colors hover:bg-white/55 hover:text-navy"
+            >
+              Feedback Form
+              <ArrowUpRight className="h-4 w-4" />
+            </a>
           </motion.div>
 
           <motion.p variants={fadeUp} className="mt-5 text-xs text-text-muted/80">

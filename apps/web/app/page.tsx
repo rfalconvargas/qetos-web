@@ -6,6 +6,7 @@ import { DecisionLab } from "@/components/DecisionLab";
 import { LogVictory } from "@/components/LogVictory";
 import { ResetTracker } from "@/components/ResetTracker";
 import { ProductSystem } from "@/components/ProductSystem";
+import { FeedbackCTA } from "@/components/FeedbackCTA";
 
 export default function Home() {
   return (
@@ -79,6 +80,8 @@ export default function Home() {
       >
         <ProductSystem />
       </Section>
+
+      <FeedbackCTA />
     </main>
   );
 }

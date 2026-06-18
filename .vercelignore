@@ -1,0 +1,19 @@
+# The "landing" Vercel project builds with Root Directory = apps/web.
+# Keep apps/web; drop everything heavy or unrelated. (Note: when a
+# .vercelignore exists, .gitignore is NOT applied, so exclude build dirs too.)
+**/node_modules
+**/.next
+**/.turbo
+**/.expo
+.git
+.vercel
+archive
+prototype
+design
+apps/mobile
+apps/landing
+*.pdf
+*.mp4
+*.mov
+Reference Image_Ketofy_May 2026.png
+qetos-logo-2026.jpg

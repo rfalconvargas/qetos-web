@@ -105,14 +105,20 @@ async function signIn(provider){
   // so signInWithOAuth can't work inside the app.
   if (provider === "Google" && window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
     try {
-      const GoogleAuth = Capacitor.registerPlugin("GoogleAuth");
+      const GoogleAuth = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.GoogleAuth) || null;
+      if (!GoogleAuth || typeof GoogleAuth.signIn !== "function") throw new Error("GoogleAuth plugin not available");
       const res = await GoogleAuth.signIn();
       const idToken = res && res.authentication && res.authentication.idToken;
       if (!idToken) throw new Error("no id token returned");
       const { error } = await DB.signInWithIdToken("google", idToken);
       if (error) throw error;
       return; // DB.onAuth reveals the app + syncs the user
-    } catch (e) { console.warn("native google sign-in:", e); toast("Google sign-in failed — use the email link below"); return; }
+    } catch (e) {
+      console.warn("native google sign-in:", e);
+      var msg = (e && (e.message || e.code)) ? (e.message || e.code) : (typeof e === "string" ? e : JSON.stringify(e));
+      toast("Google error: " + String(msg).slice(0, 140));
+      return;
+    }
   }
   // Web (browser) path: standard OAuth redirect.
   if (DB.ready() && map[provider]) {
